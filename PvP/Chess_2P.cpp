@@ -33,7 +33,11 @@ class Pieces{
         file piece_file;
         representation rep;
 
+        // Virtual function
         virtual void set_representation(colour piece_colour)=0;
+
+        // Virtual function to control how each piece moves
+        virtual void move(int target_rank, int target_file)=0;
 
         // Constructor
         Pieces(colour c, int r, file f){piece_colour=c, piece_rank=r, piece_file=f;};
@@ -77,6 +81,14 @@ class Rook: public Pieces{
         } else {
             rep=br;
         }
+    };
+
+    void move(int target_rank, int target_file){
+        if ((target_rank==piece_rank || target_file==piece_file) && !(target_rank==piece_rank && target_file==piece_file)){
+            
+        } else {
+            std::cout << "Not a legal move, please re-enter your move: ";
+        };
     };
 
     // Constructor
@@ -151,6 +163,7 @@ class King: public Pieces{
 // Move notation, if two same pieces can move to the same position, the file is added before the end position. If they are in the same file, the rank is added instead
 // Rd8 > Rdd8 or R3d8 for moving a rook
 
+// Need to update the board after a piece moves
 
 // Functions
 
@@ -259,7 +272,7 @@ void print_board(std::vector<std::vector<Pieces*>> &board){
 void print_square(std::string square, std::vector<std::vector<Pieces*>> board){
 
     // Map file letters to integers
-    std::unordered_map<char, int> files={{'a', 0}, {'b', 1}, {'c', 2}, {'d', 3}, {'e', 4}, {'f', 5}, {'g', 6}, {'h', 7}};
+    std::unordered_map<char, int> files={{'a', a}, {'b', b}, {'c', c}, {'d', d}, {'e', e}, {'f', f}, {'g', g}, {'h', h}};
 
     // stoi input has to be a string and a digit apparantly, can't be a character or a string with letters
     std::cout << str_piece(board[stoi(square.substr(1, 1))-1][files[square[0]]]->rep) << std::endl;

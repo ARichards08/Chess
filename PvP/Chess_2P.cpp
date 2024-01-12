@@ -4,6 +4,8 @@
 #include <vector>
 #include <unordered_map>
 
+// Program generates the board and can print it, but can't do anything else. I think it's already got a pretty bad approach, so I'm going ot start again
+
 // Enumerations
 
 // Enumerate colour
@@ -33,11 +35,8 @@ class Pieces{
         file piece_file;
         representation rep;
 
-        // Virtual function
+        // Virtual function for user representation in the console
         virtual void set_representation(colour piece_colour)=0;
-
-        // Virtual function to control how each piece moves
-        virtual void move(int target_rank, int target_file)=0;
 
         // Constructor
         Pieces(colour c, int r, file f){piece_colour=c, piece_rank=r, piece_file=f;};
@@ -81,14 +80,6 @@ class Rook: public Pieces{
         } else {
             rep=br;
         }
-    };
-
-    void move(int target_rank, int target_file){
-        if ((target_rank==piece_rank || target_file==piece_file) && !(target_rank==piece_rank && target_file==piece_file)){
-            
-        } else {
-            std::cout << "Not a legal move, please re-enter your move: ";
-        };
     };
 
     // Constructor
@@ -162,8 +153,6 @@ class King: public Pieces{
 
 // Move notation, if two same pieces can move to the same position, the file is added before the end position. If they are in the same file, the rank is added instead
 // Rd8 > Rdd8 or R3d8 for moving a rook
-
-// Need to update the board after a piece moves
 
 // Functions
 

@@ -121,6 +121,104 @@ void Print_Board(std::vector<unsigned short int> &Board){
     };
 };
 
+// Function to check if an inputted move is valid
+void input_move_syntax(std::string &str){
+    bool let_dig_check=false, length_check=false, dup_check=false;
+    int sum;
+
+    while (let_dig_check==false || length_check==false || dup_check==false){
+        length_check=false, let_dig_check=false, dup_check=false;
+        // Inputted move must be four characters long
+        if (str.length()==4) length_check=true;
+
+        // First two and last two characters must be a letter a-h and a number 1-8
+        sum=0;
+        for (int i=0; i<2; i++){
+            if (str[2*i]=='a' || str[2*i]=='b' || str[2*i]=='c' || str[2*i]=='d' || str[2*i]=='e' || str[2*i]=='f' || str[2*i]=='g' || str[2*i]=='h') sum++;
+
+            if (isdigit(str[2*i+1]) && (str[2*i+1]!='0' && str[2*i+1]!='9')) sum++;
+        };
+        if (sum==4) let_dig_check=true;
+
+        if (str.substr(0, 2) != str.substr(2, 2)) dup_check=true;
+
+        // Get a new move entered by the player if the one entered was invalid
+        if (length_check==false){
+            std::cout << "Please ensure that the length of your move is 4 characters long: ";
+            getline(std::cin, str);
+        } else if (let_dig_check==false) {
+            std::cout << "Please ensure that the files are lowercase letters a-h and the rows are integers 1-8: ";
+            getline(std::cin, str);
+        } else if (dup_check==false) {
+            std::cout << "Please ensure that the target square is not the same as the initial square: ";
+            getline(std::cin, str);
+        };
+    };
+};
+
+// Function to convert a square reference into an array index
+int Ref2Idx(std::string Ref){
+    int i, j;
+
+    switch (Ref[0]){
+    case 'a':
+        i=0;
+        break;
+    case 'b':
+        i=1;
+        break;
+    case 'c':
+        i=2;
+        break;
+    case 'd':
+        i=3;
+        break;
+    case 'e':
+        i=4;
+        break;
+    case 'f':
+        i=5;
+        break;
+    case 'g':
+        i=6;
+        break;
+    case 'h':
+        i=7;
+        break;
+    default:
+        i=0;
+        break;
+    };
+
+    j=stoi(Ref.substr(1, 1))-1;
+    return j*8+i;
+};
+
+// Function to move a piece to a square, from a square index i.e. 40 -> 56
+void Move(int initial, int target, std::vector<unsigned short int> &Board){
+    Board[target]=Board[initial];
+    Board[initial]=Piece::Remove();
+};
+
+// Function to move a piece to a square, from a square name i.e. a5c8
+void Move(std::string input, std::vector<unsigned short int> &Board){
+    int initial, target;
+
+    initial=Ref2Idx(input.substr(0, 2)), target=Ref2Idx(input.substr(2, 2));
+
+    Board[target]=Board[initial];
+    Board[initial]=Piece::Remove();
+};
+
+// Function to take a player's input to move a piece
+void Player_move(std::string &input_move, std::vector<unsigned short int> &Board){
+    // First check syntax
+    input_move_syntax(input_move);
+
+    // Then perform move
+    Move(input_move, Board);
+};
+
 // Program
 
 int main (int argc, char *argv[]){
@@ -129,6 +227,19 @@ int main (int argc, char *argv[]){
 std::vector<unsigned short int> Board(64, 0);
 
 Setup_Board(Board);
+
+// Player input
+std::string White_Move, Black_Move;
+
+// Program loop
+Print_Board(Board);
+
+std::cout << "White player, Please enter your move, from initial square to target square i.e. a4c3: ";
+
+getline(std::cin, White_Move);
+
+Player_move(White_Move, Board);
+
 Print_Board(Board);
 
 }

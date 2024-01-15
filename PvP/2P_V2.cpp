@@ -18,9 +18,15 @@ namespace Piece{
     // Colour Enumeration
     enum Colour{Black, White};
 
-    // Add a piece function, returns the piece's int value
+    // Function to add a piece to a square, returns the piece's int value
+    // Colour default is so that a colour doesn't have to be specified when lookign at empty places
     unsigned short int Add(Colour Col, Figure Fig){
         return Col*6+Fig;
+    };
+
+    // Function to remove a piece from a square, improves readability
+    unsigned short int Remove(){
+        return None;
     };
 };
 
@@ -41,13 +47,60 @@ void Setup_Board(std::vector<unsigned short int> &Board){
     for (int i=8*1; i<8*2; i++){
         Board[i]=Piece::Add(Piece::White, Piece::Pawn);
     };
+    // Add empty Row 3-6
+    for (int i=8*2; i<8*6; i++){
+        Board[i]=Piece::Remove();
+    };
     // Add Row 7, Black Pawns
     for (int i=8*6; i<8*7; i++){
         Board[i]=Piece::Add(Piece::Black, Piece::Pawn);
     };
     // Add Row 8, Black non-pawns
     Board[56]=Piece::Add(Piece::Black, Piece::Rook), Board[57]=Piece::Add(Piece::Black, Piece::Knight), Board[58]=Piece::Add(Piece::Black, Piece::Bishop), Board[59]=Piece::Add(Piece::Black, Piece::Queen), Board[60]=Piece::Add(Piece::Black, Piece::King), Board[61]=Piece::Add(Piece::Black, Piece::Bishop), Board[62]=Piece::Add(Piece::Black, Piece::Knight), Board[63]=Piece::Add(Piece::Black, Piece::Rook);
+};
 
+// Function to return 2 letters as a piece instead of an int, makes the board more readable before graphics are implemented
+std::string Reference(unsigned short int Position){
+    switch (Position){
+    case Piece::White*6 + Piece::Pawn :
+        return "wp";
+        break;
+    case Piece::White*6 + Piece::Rook :
+        return "wr";
+        break;
+    case Piece::White*6 + Piece::Knight :
+        return "wn";
+        break;
+    case Piece::White*6 + Piece::Bishop :
+        return "wb";
+        break;
+    case Piece::White*6 + Piece::Queen :
+        return "wq";
+        break;
+    case Piece::White*6 + Piece::King :
+        return "wk";
+        break;
+    case Piece::Black*6 + Piece::Pawn :
+        return "bp";
+        break;
+    case Piece::Black*6 + Piece::Rook :
+        return "br";
+        break;
+    case Piece::Black*6 + Piece::Knight :
+        return "bn";
+        break;
+    case Piece::Black*6 + Piece::Bishop :
+        return "bb";
+        break;
+    case Piece::Black*6 + Piece::Queen :
+        return "bq";
+        break;
+    case Piece::Black*6 + Piece::King :
+        return "bk";
+        break;
+    default:
+        return "--";
+    };
 };
 
 // Function to print the board
@@ -62,12 +115,7 @@ void Print_Board(std::vector<unsigned short int> &Board){
         std::cout << i+1 << "  ";
 
         for (int j=0; j<8; j++) {
-            k=i*8+j;
-            if (Board[k]<10){
-                std::cout << " " << Board[k] << " ";
-            } else {
-            std::cout << Board[k] << " ";
-            };
+            std::cout << Reference(Board[i*8+j]) << " ";
         };
         std::cout << std::endl;
     };

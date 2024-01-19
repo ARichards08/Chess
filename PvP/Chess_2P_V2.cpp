@@ -3,8 +3,13 @@
 #include <string>
 #include <vector>
 
-// Enumerations
+// Global Variables
 
+// Board
+std::vector<int> Board(64, 0);
+
+// Colour that is currently to move, can be updated by assigning Piece::Colour
+bool ColourtoMove=1;
 
 
 
@@ -19,15 +24,113 @@ namespace Piece{
     enum Colour{Black, White};
 
     // Function to add a piece to a square, returns the piece's int value
-    // Colour default is so that a colour doesn't have to be specified when lookign at empty places
-    unsigned short int Add(Colour Col, Figure Fig){
+     int Add(Colour Col, Figure Fig){
         return Col*6+Fig;
     };
 
     // Function to remove a piece from a square, improves readability
-    unsigned short int Remove(){
+     int Remove(){
         return None;
     };
+
+    // Function returning a boolean on whether a piece is white or not
+    bool IsWhite(int pc){
+        if (pc>6){
+            return true;
+        } else{
+            return false;
+        };
+    };
+
+    // Function returning a boolean on whether the piece is a sliding piece i.e. Rook, Bishop or Queen
+    // They will share similar logic for moves
+    bool IsSlidingPiece(int pc){
+        if (pc==Add(White, Rook) || pc==Add(White, Bishop) || pc==Add(White, Queen) || pc==Add(Black, Rook) || pc==Add(Black, Bishop) || pc==Add(Black, Queen)){
+            return true;
+        } else {
+            return false;
+        }
+    };
+};
+
+
+// Namespace with all the functions related to validating a legal move
+namespace LegalMoves{
+
+    // Move class, just holds a initial square and a target square
+    class Move{
+    public:
+        int initial_square;
+        int target_square;
+
+        // Default constructor
+        Move(int initial, int target){
+            initial_square=initial;
+            target_square=target;
+        };
+
+        // Copy constructor
+        Move(Move &in_move){
+            initial_square=in_move.initial_square;
+            target_square=in_move.target_square;
+        };
+
+    };
+
+    // Direction offset constants to move sliding pieces around the board
+    // const vectors aren't allowed, arrays only it seems
+    // North, South, East, West, NE, SW, SE, NW
+    const static std::vector<int> SlidingDirections={8, -8, 1, -1, 9, -9, 7, -7};
+
+    // Static vector that contains the number of squares in 8 directions
+    // Precomputing function will be called to set this up. Can't figure out how to have the vector be constant after being setup 
+    std::vector<std::vector<int>> PrecomputingData(){
+        std::vector<int> SingleSq;
+        std::vector<std::vector<int>> result;
+        int North, South, East, West, NE, SW, SE, NW;
+        for (int file=0; file<8; file++){
+            for (int rank=0; rank<8; rank++){
+                North=7-rank;
+                South=rank;
+                East=7-file;
+                West=file;
+                NE=std::min(North, East);
+                SW=std::min(South, West);
+                SE=std::min(South, East);
+                NW=std::min(North, West);
+                SingleSq={North, South, East, West, NE, SW, SE, NW};
+
+                result.push_back(SingleSq);
+            };
+        };
+        return result;
+    };
+
+    const static std::vector<std::vector<int>> SquaresToEdge(PrecomputingData());
+
+    // Function to calculate the number of squares to generate a list of legal moves at each position
+    // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
+    std::vector<Move> GenerateMoves(){
+        std::vector<Move> MovesList;
+
+        for (int start_sq=0; start_sq<64; start_sq++){
+            // Check the colour of the piece on the square is the colour to play
+            if (Piece::IsWhite(Board[start_sq])==ColourtoMove){
+                // Check which type of piece it is
+                // Rook, Bishop or Queen
+                if (Piece::IsSlidingPiece(Board[start_sq])) {
+
+                };
+
+            };
+        };
+
+
+
+        return MovesList;
+    };
+
+
 };
 
 // Classes
@@ -40,7 +143,7 @@ namespace Piece{
 // Functions
 
 // Function to setup the chess board at the start of the program
-void Setup_Board(std::vector<unsigned short int> &Board){
+void Setup_Board(){
     // Add Row 1, White non-pawns
     Board[0]=Piece::Add(Piece::White, Piece::Rook), Board[1]=Piece::Add(Piece::White, Piece::Knight), Board[2]=Piece::Add(Piece::White, Piece::Bishop), Board[3]=Piece::Add(Piece::White, Piece::Queen), Board[4]=Piece::Add(Piece::White, Piece::King), Board[5]=Piece::Add(Piece::White, Piece::Bishop), Board[6]=Piece::Add(Piece::White, Piece::Knight), Board[7]=Piece::Add(Piece::White, Piece::Rook);
     // Add Row 2, White pawns
@@ -60,7 +163,7 @@ void Setup_Board(std::vector<unsigned short int> &Board){
 };
 
 // Function to return 2 letters as a piece instead of an int, makes the board more readable before graphics are implemented
-std::string Reference(unsigned short int Position){
+std::string Reference(int Position){
     switch (Position){
     case Piece::White*6 + Piece::Pawn :
         return "wp";
@@ -104,7 +207,7 @@ std::string Reference(unsigned short int Position){
 };
 
 // Function to print the board
-void Print_Board(std::vector<unsigned short int> &Board){
+void Print_Board(){
     int k;
 
     // Files
@@ -121,7 +224,7 @@ void Print_Board(std::vector<unsigned short int> &Board){
     };
 };
 
-// Function to check if an inputted move is valid
+// Function to check if an inputted move uses two squares on the board, syntax check
 void input_move_syntax(std::string &str){
     bool let_dig_check=false, length_check=false, dup_check=false;
     int sum;
@@ -195,13 +298,13 @@ int Ref2Idx(std::string Ref){
 };
 
 // Function to move a piece to a square, from a square index i.e. 40 -> 56
-void Move(int initial, int target, std::vector<unsigned short int> &Board){
+void MakeMove(int initial, int target){
     Board[target]=Board[initial];
     Board[initial]=Piece::Remove();
 };
 
 // Function to move a piece to a square, from a square name i.e. a5c8
-void Move(std::string input, std::vector<unsigned short int> &Board){
+void MakeMove(std::string input){
     int initial, target;
 
     initial=Ref2Idx(input.substr(0, 2)), target=Ref2Idx(input.substr(2, 2));
@@ -211,35 +314,34 @@ void Move(std::string input, std::vector<unsigned short int> &Board){
 };
 
 // Function to take a player's input to move a piece
-void Player_move(std::string &input_move, std::vector<unsigned short int> &Board){
+void Player_move(std::string &input_move){
     // First check syntax
     input_move_syntax(input_move);
 
     // Then perform move
-    Move(input_move, Board);
+    MakeMove(input_move);
 };
 
+//////////
 // Program
+//////////
 
 int main (int argc, char *argv[]){
 
-// Board
-std::vector<unsigned short int> Board(64, 0);
-
-Setup_Board(Board);
+Setup_Board();
 
 // Player input
 std::string White_Move, Black_Move;
 
 // Program loop
-Print_Board(Board);
+Print_Board();
 
 std::cout << "White player, Please enter your move, from initial square to target square i.e. a4c3: ";
 
 getline(std::cin, White_Move);
 
-Player_move(White_Move, Board);
+Player_move(White_Move);
 
-Print_Board(Board);
+Print_Board();
 
 }

@@ -1,5 +1,14 @@
-Need to keep a list of legal moves for each piece.
-Need to keep track of pinned pieces and squares the other player is attacking.
+Keep a list of legal moves for each piece.
+Keep track of pinned pieces and squares the other player is attacking.
+Check for checks
+Keep track of which colour piece is being moved.
+Can't allow empty positions to be moved.
+
+
+Creates an array at the program start to calculate the number of square in each 8 compass directions for each square on the board.
+After each move, iterate over the whole board and for each piece it finds, calculate every legal move it can make, adding to a list. Doing this and searching for the move should be faster than usign a lot of if statements to see if the move is valid each time, and the bot will need a list of every move to work out the best one anyway
+
+
 
 Might need to use FEN notation, at least for the bot, not sure about 2P.
 

@@ -9,11 +9,42 @@
 std::vector<int> Board(64, 0);
 
 // Colour that is currently to move, can be updated by assigning Piece::Colour
-bool ColourtoMove=1;
+// Need a fuction that will update both the colour to move and the enemy colour at the same time
+int ColourtoMove=1, ColourEnemy=0;
 
+
+
+// Emplace back is trying to create a vector of objects but doesn't have a deafult constructor for that, need to work out how to push_nback/emplace_back a vector of objects to a vector of objects
+
+
+
+
+
+// Classes
+
+// Move class, just holds a initial square and a target square
+class Move{
+public:
+    int initial_square;
+    int target_square;
+
+    // Default constructor
+    Move(int initial, int target){
+        initial_square=initial;
+        target_square=target;
+    };
+
+    // Copy constructor
+    Move(const Move &in_move){
+        initial_square=in_move.initial_square;
+        target_square=in_move.target_square;
+    };
+
+};
 
 
 // Namespaces
+
 namespace Piece{
 
     // Pieces are given an int value, 0 for none, 1-6 for the black pieces and 7-12 for the white pieces
@@ -33,9 +64,31 @@ namespace Piece{
         return None;
     };
 
-    // Function returning a boolean on whether a piece is white or not
-    bool IsWhite(int pc){
-        if (pc>6){
+    // Function returning a boolean on whether a piece is the chosen colour
+    bool IsColour(int pc, int Col){
+        if (Col==Colour::Black){
+            if (pc>=1 && pc<=6){
+                return true;
+            } else{
+                return false;
+            };
+        } else if (Col==Colour::White){
+            if (pc>=7 && pc<=12){
+                return true;
+            } else{
+                return false;
+            };
+        };
+        // If the square is empty
+        return false;
+    };
+
+    // Function returning a boolean on whether a piece is the chosen Figure
+    bool IsFigure (int pc, int figure){
+        // Remove colour if piece is white
+        if (pc>6) pc-=6;
+
+        if (pc == figure){
             return true;
         } else{
             return false;
@@ -45,7 +98,7 @@ namespace Piece{
     // Function returning a boolean on whether the piece is a sliding piece i.e. Rook, Bishop or Queen
     // They will share similar logic for moves
     bool IsSlidingPiece(int pc){
-        if (pc==Add(White, Rook) || pc==Add(White, Bishop) || pc==Add(White, Queen) || pc==Add(Black, Rook) || pc==Add(Black, Bishop) || pc==Add(Black, Queen)){
+        if (IsFigure(pc, Rook) || IsFigure(pc, Bishop) || IsFigure(pc, Queen)){
             return true;
         } else {
             return false;
@@ -57,33 +110,13 @@ namespace Piece{
 // Namespace with all the functions related to validating a legal move
 namespace LegalMoves{
 
-    // Move class, just holds a initial square and a target square
-    class Move{
-    public:
-        int initial_square;
-        int target_square;
-
-        // Default constructor
-        Move(int initial, int target){
-            initial_square=initial;
-            target_square=target;
-        };
-
-        // Copy constructor
-        Move(Move &in_move){
-            initial_square=in_move.initial_square;
-            target_square=in_move.target_square;
-        };
-
-    };
-
     // Direction offset constants to move sliding pieces around the board
     // const vectors aren't allowed, arrays only it seems
     // North, South, East, West, NE, SW, SE, NW
     const static std::vector<int> SlidingDirections={8, -8, 1, -1, 9, -9, 7, -7};
 
     // Static vector that contains the number of squares in 8 directions
-    // Precomputing function will be called to set this up. Can't figure out how to have the vector be constant after being setup 
+    // Precomputing function will be called to set this up.
     std::vector<std::vector<int>> PrecomputingData(){
         std::vector<int> SingleSq;
         std::vector<std::vector<int>> result;
@@ -108,6 +141,36 @@ namespace LegalMoves{
 
     const static std::vector<std::vector<int>> SquaresToEdge(PrecomputingData());
 
+    // Function to generate the sliding piece moves
+    // use insert to add the sliding moves to the move list
+    std::vector<Move> GenerateSlidingMoves(int start_sq, int pc){
+        std::vector<Move> SlidingMovesList;
+        int target_sq, pc_on_sq;
+
+        // Start and End direction indices for rooks and bishops, queens search all 8 directions
+
+        int startDirIndex=0, endDirIndex=8;
+        if (Piece::IsFigure(pc_on_sq, Piece::Figure::Bishop)) startDirIndex=4;
+        if (Piece::IsFigure(pc_on_sq, Piece::Figure::Rook)) endDirIndex=4;
+
+        for (int direction_id=startDirIndex; direction_id<endDirIndex; direction_id++){
+            for (int n=0; n<SquaresToEdge[start_sq][direction_id]; n++){
+
+                target_sq=start_sq+SlidingDirections[direction_id]*(n+1);
+                pc_on_sq=Board[target_sq];
+
+                if (Piece::IsColour(pc_on_sq, ColourtoMove)) break; // Break on reaching a square with friendly colour
+
+                SlidingMovesList.push_back(Move(start_sq, target_sq));
+
+                if (Piece::IsColour(pc_on_sq, ColourEnemy)) break; // Stop looking in that direction after capturing an enemy piece
+            };
+        };
+
+        return SlidingMovesList;
+    };
+
+
     // Function to calculate the number of squares to generate a list of legal moves at each position
     // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
     std::vector<Move> GenerateMoves(){
@@ -115,27 +178,21 @@ namespace LegalMoves{
 
         for (int start_sq=0; start_sq<64; start_sq++){
             // Check the colour of the piece on the square is the colour to play
-            if (Piece::IsWhite(Board[start_sq])==ColourtoMove){
+            if (Piece::IsColour(Board[start_sq], ColourtoMove)){
                 // Check which type of piece it is
                 // Rook, Bishop or Queen
                 if (Piece::IsSlidingPiece(Board[start_sq])) {
-
+                    std::vector<Move> SlidingMoves=GenerateSlidingMoves(start_sq, Board[start_sq]);
+                    MovesList.insert(MovesList.end(), SlidingMoves.begin(), SlidingMoves.end());
                 };
 
             };
         };
 
-
-
         return MovesList;
     };
 
-
 };
-
-// Classes
-
-
 
 // Move notation, if two same pieces can move to the same position, the file is added before the end position. If they are in the same file, the rank is added instead
 // Rd8 > Rdd8 or R3d8 for moving a rook
@@ -326,9 +383,23 @@ void Player_move(std::string &input_move){
 // Program
 //////////
 
-int main (int argc, char *argv[]){
+int main (){
 
+
+// Setup Board
 Setup_Board();
+
+// Move list
+std::vector<Move> MoveList;
+
+MoveList=LegalMoves::GenerateMoves();
+
+
+
+
+
+
+// Test stuff
 
 // Player input
 std::string White_Move, Black_Move;

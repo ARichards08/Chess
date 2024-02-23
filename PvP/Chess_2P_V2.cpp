@@ -85,10 +85,8 @@ namespace Piece{
 
     // Function returning a boolean on whether a piece is the chosen Figure
     bool IsFigure (int pc, int figure){
-        // Remove colour if piece is white
-        if (pc>6) pc-=6;
-
-        if (pc == figure){
+        // Account for Black and White colours
+        if (pc == figure || pc == figure+6){
             return true;
         } else{
             return false;
@@ -113,7 +111,7 @@ namespace LegalMoves{
     // Direction offset constants to move sliding pieces around the board
     // const vectors aren't allowed, arrays only it seems
     // North, South, East, West, NE, SW, SE, NW
-    const static std::vector<int> SlidingDirections={8, -8, 1, -1, 9, -9, 7, -7};
+    const static std::vector<int> SlidingDirections={8, -8, 1, -1, 9, -9, -7, 7};
 
     // Static vector that contains the number of squares in 8 directions
     // Precomputing function will be called to set this up.
@@ -121,8 +119,8 @@ namespace LegalMoves{
         std::vector<int> SingleSq;
         std::vector<std::vector<int>> result;
         int North, South, East, West, NE, SW, SE, NW;
-        for (int file=0; file<8; file++){
-            for (int rank=0; rank<8; rank++){
+        for (int rank=0; rank<8; rank++){
+            for (int file=0; file<8; file++){
                 North=7-rank;
                 South=rank;
                 East=7-file;
@@ -143,49 +141,111 @@ namespace LegalMoves{
 
     // Function to generate the sliding piece moves
     // use insert to add the sliding moves to the move list
-    std::vector<Move> GenerateSlidingMoves(int start_sq, int pc){
+    std::vector<Move> GenerateSlidingMoves(int startSq){
         std::vector<Move> SlidingMovesList;
-        int target_sq, pc_on_sq;
+        int pc, targetSq, targetPc;
+
+        pc=Board[startSq];
 
         // Start and End direction indices for rooks and bishops, queens search all 8 directions
 
         int startDirIndex=0, endDirIndex=8;
-        if (Piece::IsFigure(pc_on_sq, Piece::Figure::Bishop)) startDirIndex=4;
-        if (Piece::IsFigure(pc_on_sq, Piece::Figure::Rook)) endDirIndex=4;
+        if (Piece::IsFigure(targetPc, Piece::Figure::Bishop)) startDirIndex=4;
+        if (Piece::IsFigure(targetPc, Piece::Figure::Rook)) endDirIndex=4;
 
-        for (int direction_id=startDirIndex; direction_id<endDirIndex; direction_id++){
-            for (int n=0; n<SquaresToEdge[start_sq][direction_id]; n++){
+        for (int directionId=startDirIndex; directionId<endDirIndex; directionId++){
+            for (int n=0; n<SquaresToEdge[startSq][directionId]; n++){
 
-                target_sq=start_sq+SlidingDirections[direction_id]*(n+1);
-                pc_on_sq=Board[target_sq];
+                targetSq=startSq+SlidingDirections[directionId]*(n+1);
+                targetPc=Board[targetSq];
 
-                if (Piece::IsColour(pc_on_sq, ColourtoMove)) break; // Break on reaching a square with friendly colour
+                if (Piece::IsColour(targetPc, ColourtoMove)) break; // Break on reaching a square with friendly colour
 
-                SlidingMovesList.push_back(Move(start_sq, target_sq));
+                SlidingMovesList.push_back(Move(startSq, targetSq));
 
-                if (Piece::IsColour(pc_on_sq, ColourEnemy)) break; // Stop looking in that direction after capturing an enemy piece
+                if (Piece::IsColour(targetPc, ColourEnemy)) break; // Stop looking in that direction after capturing an enemy piece
             };
         };
 
         return SlidingMovesList;
     };
 
+    std::vector<Move> GenerateKnightMoves(int startSq){
+        std::vector<Move> KnightMovesList;
+        std::vector<int> diagonals(2);
+        int targetSq, targetPc, temp1, temp2;
+
+        // Look in the cardinal directions 1 square first and then diagonals 
+        for (int directionId=0; directionId<4; directionId++){
+
+            // Determining the diagonal ids for each cardinal direction
+            switch (directionId){
+            case 0:
+                diagonals={4, 7};
+                break;
+            case 1:
+                diagonals={5, 6};
+                break;
+            case 2:
+                diagonals={4, 6};
+                break;
+            case 3:
+                diagonals={5, 7};
+                break;            
+            default:
+                break;
+            };
+
+            // If each cardinal direction followed by either diagonal is within SquaresToEdge, set as targetSq
+            if (SquaresToEdge[startSq][directionId] > 0){
+                for (int i=0; i<2; i++){
+                    temp1=startSq+SlidingDirections[directionId];
+                    temp2=SquaresToEdge[temp1][diagonals[i]];
+                    if (temp2 > 0){ // seg fault??
+
+                        targetSq=startSq+SlidingDirections[directionId]+SlidingDirections[diagonals[i]];
+                        targetPc=Board[targetSq];
+
+                        // Break on friendly piece but if piece is enemy or none, add move to list
+                        if (Piece::IsColour(targetPc, ColourtoMove)){
+                            continue;
+                        } else{
+                            KnightMovesList.push_back(Move(startSq, targetSq));
+                        };
+                    };
+                };
+            };
+        };
+        
+        return KnightMovesList;
+    };
+
 
     // Function to calculate the number of squares to generate a list of legal moves at each position
     // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
+    // Special moves: Pawn charge, En Passant, Castling, Promotion
+    
     std::vector<Move> GenerateMoves(){
-        std::vector<Move> MovesList;
+        std::vector<Move> MovesList, TempMoves;
 
-        for (int start_sq=0; start_sq<64; start_sq++){
+        for (int startSq=0; startSq<64; startSq++){
             // Check the colour of the piece on the square is the colour to play
-            if (Piece::IsColour(Board[start_sq], ColourtoMove)){
+            if (Piece::IsColour(Board[startSq], ColourtoMove)){
                 // Check which type of piece it is
                 // Rook, Bishop or Queen
-                if (Piece::IsSlidingPiece(Board[start_sq])) {
-                    std::vector<Move> SlidingMoves=GenerateSlidingMoves(start_sq, Board[start_sq]);
-                    MovesList.insert(MovesList.end(), SlidingMoves.begin(), SlidingMoves.end());
+                if (Piece::IsSlidingPiece(Board[startSq])) {
+                    TempMoves=GenerateSlidingMoves(startSq);
+                    MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
+                    TempMoves.clear();
+                // Knight
+                } else if (Piece::IsFigure(Board[startSq], Piece::Figure::Knight)){
+                    TempMoves=GenerateKnightMoves(startSq);
+                    MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
+                    TempMoves.clear();
+                // Empty
+                } else {
+                    continue;
                 };
-
             };
         };
 
@@ -354,6 +414,42 @@ int Ref2Idx(std::string Ref){
     return j*8+i;
 };
 
+// Function to convert an array index into a square reference
+std::string Ind2Ref(int Ind){
+    std::string letter;
+
+    switch (Ind%8){
+    case 0:
+        letter='a';
+        break;
+    case 1:
+        letter='b';
+        break;
+    case 2:
+        letter='c';
+        break;
+    case 3:
+        letter='d';
+        break;
+    case 4:
+        letter='e';
+        break;
+    case 5:
+        letter='f';
+        break;
+    case 6:
+        letter='g';
+        break;
+    case 7:
+        letter='h';
+        break;
+    default:
+        break;
+    };
+
+    return letter+std::to_string(Ind/8 + 1);
+};
+
 // Function to move a piece to a square, from a square index i.e. 40 -> 56
 void MakeMove(int initial, int target){
     Board[target]=Board[initial];
@@ -393,11 +489,9 @@ Setup_Board();
 std::vector<Move> MoveList;
 
 MoveList=LegalMoves::GenerateMoves();
-
-
-
-
-
+for (int i=0; i<MoveList.size(); i++){
+    std::cout << Ind2Ref(MoveList[i].initial_square) << " " << Ind2Ref(MoveList[i].target_square) << " " << MoveList[i].initial_square << " " << MoveList[i].target_square << std::endl;
+};
 
 // Test stuff
 
@@ -409,10 +503,10 @@ Print_Board();
 
 std::cout << "White player, Please enter your move, from initial square to target square i.e. a4c3: ";
 
-getline(std::cin, White_Move);
+//getline(std::cin, White_Move);
 
-Player_move(White_Move);
+//Player_move(White_Move);
 
-Print_Board();
+//Print_Board();
 
 }

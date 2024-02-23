@@ -86,7 +86,9 @@ namespace Piece{
     // Function returning a boolean on whether a piece is the chosen Figure
     bool IsFigure (int pc, int figure){
         // Account for Black and White colours
-        if (pc == figure || pc == figure+6){
+        if (pc > 6) pc-=6;
+
+        if (pc == figure){
             return true;
         } else{
             return false;
@@ -139,7 +141,7 @@ namespace LegalMoves{
 
     const static std::vector<std::vector<int>> SquaresToEdge(PrecomputingData());
 
-    // Function to generate the sliding piece moves
+    // Function to generate the pseudo-legal sliding piece moves
     // use insert to add the sliding moves to the move list
     std::vector<Move> GenerateSlidingMoves(int startSq){
         std::vector<Move> SlidingMovesList;
@@ -170,6 +172,7 @@ namespace LegalMoves{
         return SlidingMovesList;
     };
 
+    // Function to generate the pseudo-legal Knight moves
     std::vector<Move> GenerateKnightMoves(int startSq){
         std::vector<Move> KnightMovesList;
         std::vector<int> diagonals(2);
@@ -220,13 +223,10 @@ namespace LegalMoves{
         return KnightMovesList;
     };
 
-    // Function to generate the sliding piece moves
-    // use insert to add the sliding moves to the move list
+    // Function to generate the pseudo-legal King moves
     std::vector<Move> GenerateKingMoves(int startSq){
         std::vector<Move> KingMovesList;
-        int pc, targetSq, targetPc;
-
-        pc=Board[startSq];
+        int targetSq, targetPc;
 
         for (int directionId=0; directionId<8; directionId++){
             if (SquaresToEdge[startSq][directionId] > 0){
@@ -246,6 +246,70 @@ namespace LegalMoves{
         return KingMovesList;
     };
 
+    // Function to generate the pseudo-legal Pawn moves
+    std::vector<Move> GeneratePawnMoves(int startSq){
+        std::vector<Move> PawnMovesList;
+        std::vector<int> diagonals(2);
+        int targetSq, targetPc;
+
+        // Only move N, NE or NW when the player colour is white
+        if (ColourtoMove==Piece::Colour::White){
+            // Forward
+            if (SquaresToEdge[startSq][0] > 0){
+                targetSq=startSq+SlidingDirections[0];
+                targetPc=Board[targetSq];
+
+                // Check the forward square is empty
+                if (Piece::IsFigure(targetPc, Piece::Figure::None)){
+                    PawnMovesList.push_back(Move(startSq, targetSq));
+                };
+            };
+            // Attacking
+            diagonals={4, 7}; // NE and NW
+
+            for (int i=0; i<2; i++){
+                if (SquaresToEdge[startSq][diagonals[i]] > 0){
+                    targetSq=startSq+SlidingDirections[diagonals[i]];
+                    targetPc=Board[targetSq];
+
+                    // Check that the piece in the diagonal square is an enemy piece
+                    if (Piece::IsColour(targetPc, ColourEnemy)){
+                        PawnMovesList.push_back(Move(startSq, targetSq));
+                    };
+                };
+            };
+
+        // Only move S, SE or SW when the player colour is black
+        } else{
+            // Forward
+            if (SquaresToEdge[startSq][1] > 0){
+                targetSq=startSq+SlidingDirections[1];
+                targetPc=Board[targetSq];
+                
+                // Check the forward square is empty
+                if (Piece::IsFigure(targetPc, Piece::Figure::None)){
+                    PawnMovesList.push_back(Move(startSq, targetSq));
+                };
+            };
+            // Attacking
+            diagonals={5, 6}; // SW and SE
+
+            for (int i=0; i<2; i++){
+                if (SquaresToEdge[startSq][diagonals[i]] > 0){
+                    targetSq=startSq+SlidingDirections[diagonals[i]];
+                    targetPc=Board[targetSq];
+
+                    // Check that the piece in the diagonal square is an enemy piece
+                    if (Piece::IsColour(targetPc, ColourEnemy)){
+                        PawnMovesList.push_back(Move(startSq, targetSq));
+                    };
+                };
+            };
+        };
+
+    
+        return PawnMovesList;
+    };
 
 
     // Function to calculate the number of squares to generate a list of legal moves at each position
@@ -269,9 +333,14 @@ namespace LegalMoves{
                     TempMoves=GenerateKnightMoves(startSq);
                     MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
                     TempMoves.clear();
-                // Knight
+                // King
                 } else if (Piece::IsFigure(Board[startSq], Piece::Figure::King)){
                     TempMoves=GenerateKingMoves(startSq);
+                    MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
+                    TempMoves.clear();
+                // Pawn
+                } else if (Piece::IsFigure(Board[startSq], Piece::Figure::Pawn)){
+                    TempMoves=GeneratePawnMoves(startSq);
                     MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
                     TempMoves.clear();
                 // Empty
@@ -522,7 +591,7 @@ std::vector<Move> MoveList;
 
 MoveList=LegalMoves::GenerateMoves();
 for (int i=0; i<MoveList.size(); i++){
-    std::cout << Ind2Ref(MoveList[i].initial_square) << " " << Ind2Ref(MoveList[i].target_square) << " " << MoveList[i].initial_square << " " << MoveList[i].target_square << std::endl;
+    std::cout << Ind2Ref(MoveList[i].initial_square) << " " << Ind2Ref(MoveList[i].target_square) << std::endl;
 };
 
 // Test stuff

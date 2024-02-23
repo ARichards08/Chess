@@ -220,6 +220,33 @@ namespace LegalMoves{
         return KnightMovesList;
     };
 
+    // Function to generate the sliding piece moves
+    // use insert to add the sliding moves to the move list
+    std::vector<Move> GenerateKingMoves(int startSq){
+        std::vector<Move> KingMovesList;
+        int pc, targetSq, targetPc;
+
+        pc=Board[startSq];
+
+        for (int directionId=0; directionId<8; directionId++){
+            if (SquaresToEdge[startSq][directionId] > 0){
+
+                targetSq=startSq+SlidingDirections[directionId];
+                targetPc=Board[targetSq];
+
+                // Break on reaching a square with friendly colour
+                if (Piece::IsColour(targetPc, ColourtoMove)){
+                    continue; 
+                } else{
+                    KingMovesList.push_back(Move(startSq, targetSq));
+                };
+            };
+        };
+
+        return KingMovesList;
+    };
+
+
 
     // Function to calculate the number of squares to generate a list of legal moves at each position
     // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
@@ -240,6 +267,11 @@ namespace LegalMoves{
                 // Knight
                 } else if (Piece::IsFigure(Board[startSq], Piece::Figure::Knight)){
                     TempMoves=GenerateKnightMoves(startSq);
+                    MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
+                    TempMoves.clear();
+                // Knight
+                } else if (Piece::IsFigure(Board[startSq], Piece::Figure::King)){
+                    TempMoves=GenerateKingMoves(startSq);
                     MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
                     TempMoves.clear();
                 // Empty

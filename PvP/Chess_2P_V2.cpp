@@ -264,6 +264,17 @@ namespace LegalMoves{
                     PawnMovesList.push_back(Move(startSq, targetSq));
                 };
             };
+            // Charging
+            // Check if the pawn is in the second row from it's side, if so allow it to charge
+            if (startSq > 7 && startSq < 16 && SquaresToEdge[startSq][0] > 1){
+                targetSq=startSq+SlidingDirections[0]*2;
+                targetPc=Board[targetSq];
+
+                // Check the forward square is empty
+                if (Piece::IsFigure(targetPc, Piece::Figure::None)){
+                    PawnMovesList.push_back(Move(startSq, targetSq));
+                };
+            };
             // Attacking
             diagonals={4, 7}; // NE and NW
 
@@ -286,6 +297,17 @@ namespace LegalMoves{
                 targetSq=startSq+SlidingDirections[1];
                 targetPc=Board[targetSq];
                 
+                // Check the forward square is empty
+                if (Piece::IsFigure(targetPc, Piece::Figure::None)){
+                    PawnMovesList.push_back(Move(startSq, targetSq));
+                };
+            };
+            // Charging
+            // Check if the pawn is in the second row from it's side, if so allow it to charge
+            if (startSq > 7 && startSq < 16 && SquaresToEdge[startSq][0] > 1){
+                targetSq=startSq+SlidingDirections[0]*2;
+                targetPc=Board[targetSq];
+
                 // Check the forward square is empty
                 if (Piece::IsFigure(targetPc, Piece::Figure::None)){
                     PawnMovesList.push_back(Move(startSq, targetSq));

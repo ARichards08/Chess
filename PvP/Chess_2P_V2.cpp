@@ -24,7 +24,7 @@ public:
     // Flag values:
     //
 
-    enum MFlag{None, Castling, EnPassant, PromoteRook, PromoteKnight, PromoteBishop, PromoteQueen};
+    enum MFlag{None, Castling, EnPassant, PawnCharge, PromoteRook, PromoteKnight, PromoteBishop, PromoteQueen};
 
     // Default constructor
     Move(int initial=0, int target=0, MFlag f=None){
@@ -294,7 +294,7 @@ namespace LegalMoves{
     };
 
     // Function to generate the pseudo-legal Pawn moves
-    // No need to check for promotions on charging moves
+    // No need to check for promotions on charging and en passant moves
     std::vector<Move> GeneratePawnMoves(int startSq){
         std::vector<Move> PawnMovesList;
         std::vector<int> diagonals(2);
@@ -322,7 +322,7 @@ namespace LegalMoves{
 
                 // Check the forward square is empty
                 if (Piece::IsFigure(targetPc, Piece::Figure::None)){
-                    PawnMovesList.push_back(Move(startSq, targetSq));
+                    PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::PawnCharge));
                 };
             };
 
@@ -339,6 +339,15 @@ namespace LegalMoves{
                         PromoteCheck(Move(startSq, targetSq), PawnMovesList);
                         PawnMovesList.push_back(Move(startSq, targetSq));
                     };
+
+                    // En Passant check
+                    // Check if the last enemy move was a pawn charge to a square on either side of the current pawn 
+                    if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
+                        if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==1)){
+                            PawnMovesList.push_back(Move(startSq, targetSq));
+                        };
+                    };
+
                 };
             };
 
@@ -364,7 +373,7 @@ namespace LegalMoves{
 
                 // Check the forward square is empty
                 if (Piece::IsFigure(targetPc, Piece::Figure::None)){
-                    PawnMovesList.push_back(Move(startSq, targetSq));
+                    PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::PawnCharge));
                 };
             };
 
@@ -382,6 +391,15 @@ namespace LegalMoves{
                         PromoteCheck(Move(startSq, targetSq), PawnMovesList);
                         PawnMovesList.push_back(Move(startSq, targetSq));
                     };
+
+                    // En Passant check
+                    // Check if the last enemy move was a pawn charge to a square on either side of the current pawn 
+                    if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
+                        if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==1)){
+                            PawnMovesList.push_back(Move(startSq, targetSq));
+                        };
+                    };
+                    
                 };
             };
         };

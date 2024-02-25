@@ -9,14 +9,7 @@
 std::vector<int> Board(64, 0);
 
 // Colour that is currently to move, can be updated by assigning Piece::Colour
-// Need a fuction that will update both the colour to move and the enemy colour at the same time
-int ColourtoMove=1, ColourEnemy=0;
-
-
-
-// Emplace back is trying to create a vector of objects but doesn't have a deafult constructor for that, need to work out how to push_nback/emplace_back a vector of objects to a vector of objects
-
-
+int ColourToMove=1, ColourEnemy=0;
 
 
 
@@ -31,7 +24,7 @@ public:
     // Flag values:
     //
 
-    enum MFlag{None, Castling, PromoteRook, PromoteKnight, PromoteBishop, PromoteQueen};
+    enum MFlag{None, Castling, EnPassant, PromoteRook, PromoteKnight, PromoteBishop, PromoteQueen};
 
     // Default constructor
     Move(int initial=0, int target=0, MFlag f=None){
@@ -55,6 +48,10 @@ public:
     };
 
 };
+
+// Array of the last move of each side, updated after each move
+// Only needed for En Passant, but could display it for players as well
+std::vector<Move> lastMoves(2);
 
 
 // Namespaces
@@ -175,7 +172,7 @@ namespace LegalMoves{
                 targetSq=startSq+SlidingDirections[directionId]*(n+1);
                 targetPc=Board[targetSq];
 
-                if (Piece::IsColour(targetPc, ColourtoMove)) break; // Break on reaching a square with friendly colour
+                if (Piece::IsColour(targetPc, ColourToMove)) break; // Break on reaching a square with friendly colour
 
                 SlidingMovesList.push_back(Move(startSq, targetSq));
 
@@ -224,7 +221,7 @@ namespace LegalMoves{
                         targetPc=Board[targetSq];
 
                         // Break on friendly piece but if piece is enemy or none, add move to list
-                        if (Piece::IsColour(targetPc, ColourtoMove)){
+                        if (Piece::IsColour(targetPc, ColourToMove)){
                             continue;
                         } else{
                             KnightMovesList.push_back(Move(startSq, targetSq));
@@ -254,7 +251,7 @@ namespace LegalMoves{
                 targetPc=Board[targetSq];
 
                 // Break on reaching a square with friendly colour
-                if (Piece::IsColour(targetPc, ColourtoMove)){
+                if (Piece::IsColour(targetPc, ColourToMove)){
                     continue; 
                 } else{
                     KingMovesList.push_back(Move(startSq, targetSq));
@@ -265,7 +262,7 @@ namespace LegalMoves{
         // Castling, only saves the king move
 
         // If neither King nor left Rook has moved
-        if (leftCastle[ColourtoMove]==true){
+        if (leftCastle[ColourToMove]==true){
             // If the three squares between the left Rook and the King are empty, add the move
             if (Piece::IsFigure(Board[startSq-1], Piece::Figure::None) && Piece::IsFigure(Board[startSq-2], Piece::Figure::None) && Piece::IsFigure(Board[startSq-3], Piece::Figure::None)){
                 // Add King move
@@ -273,7 +270,7 @@ namespace LegalMoves{
             };
         };
         // Same again but for right
-        if (leftCastle[ColourtoMove]==true){
+        if (leftCastle[ColourToMove]==true){
             // If the two squares between the right Rook and the King are empty, add the move
             if (Piece::IsFigure(Board[startSq+1], Piece::Figure::None) && Piece::IsFigure(Board[startSq+2], Piece::Figure::None)){
                 // Add King move
@@ -284,15 +281,27 @@ namespace LegalMoves{
         return KingMovesList;
     };
 
+    // Function to check if a pawn's move will allow it to promote, and adds possible moves to the PawnMovesList
+    void PromoteCheck(Move PawnMove, std::vector<Move>& List){
+        // Check for Pawn promotion
+        if (PawnMove.target_square > 55 || PawnMove.target_square < 8){
+            // If a pawn is moving the the first or last rows, add the move with each of the promotion flags
+            List.push_back(Move(PawnMove, Move::MFlag::PromoteRook));
+            List.push_back(Move(PawnMove, Move::MFlag::PromoteKnight));
+            List.push_back(Move(PawnMove, Move::MFlag::PromoteBishop));
+            List.push_back(Move(PawnMove, Move::MFlag::PromoteQueen));
+        };
+    };
+
     // Function to generate the pseudo-legal Pawn moves
+    // No need to check for promotions on charging moves
     std::vector<Move> GeneratePawnMoves(int startSq){
         std::vector<Move> PawnMovesList;
         std::vector<int> diagonals(2);
         int targetSq, targetPc;
-        Move normalMove;
 
         // Only move N, NE or NW when the player colour is white
-        if (ColourtoMove==Piece::Colour::White){
+        if (ColourToMove==Piece::Colour::White){
             // Forward
             if (SquaresToEdge[startSq][0] > 0){
                 targetSq=startSq+SlidingDirections[0];
@@ -300,7 +309,8 @@ namespace LegalMoves{
 
                 // Check the forward square is empty
                 if (Piece::IsFigure(targetPc, Piece::Figure::None)){
-                    normalMove=Move(startSq, targetSq);
+                    PromoteCheck(Move(startSq, targetSq), PawnMovesList);
+                    PawnMovesList.push_back(Move(startSq, targetSq));
                 };
             };
 
@@ -326,7 +336,8 @@ namespace LegalMoves{
 
                     // Check that the piece in the diagonal square is an enemy piece
                     if (Piece::IsColour(targetPc, ColourEnemy)){
-                        normalMove=Move(startSq, targetSq);
+                        PromoteCheck(Move(startSq, targetSq), PawnMovesList);
+                        PawnMovesList.push_back(Move(startSq, targetSq));
                     };
                 };
             };
@@ -340,7 +351,8 @@ namespace LegalMoves{
                 
                 // Check the forward square is empty
                 if (Piece::IsFigure(targetPc, Piece::Figure::None)){
-                    normalMove=Move(startSq, targetSq);
+                    PromoteCheck(Move(startSq, targetSq), PawnMovesList);
+                    PawnMovesList.push_back(Move(startSq, targetSq));
                 };
             };
 
@@ -366,22 +378,12 @@ namespace LegalMoves{
 
                     // Check that the piece in the diagonal square is an enemy piece
                     if (Piece::IsColour(targetPc, ColourEnemy)){
-                        normalMove=Move(startSq, targetSq);
+
+                        PromoteCheck(Move(startSq, targetSq), PawnMovesList);
+                        PawnMovesList.push_back(Move(startSq, targetSq));
                     };
                 };
             };
-        };
-
-        // Check for Pawn promotion
-        if (targetSq > 55 || targetSq < 8){
-            // If a pawn is moving the the first or last rows, add the move with each of the promotion flags
-            PawnMovesList.push_back(Move(normalMove, Move::MFlag::PromoteRook));
-            PawnMovesList.push_back(Move(normalMove, Move::MFlag::PromoteKnight));
-            PawnMovesList.push_back(Move(normalMove, Move::MFlag::PromoteBishop));
-            PawnMovesList.push_back(Move(normalMove, Move::MFlag::PromoteQueen));
-            // Otherwise, just add the move without the flag
-        } else{
-            PawnMovesList.push_back(normalMove);
         };
 
         return PawnMovesList;
@@ -399,7 +401,7 @@ namespace LegalMoves{
 
         for (int startSq=0; startSq<64; startSq++){
             // Check the colour of the piece on the square is the colour to play
-            if (Piece::IsColour(Board[startSq], ColourtoMove)){
+            if (Piece::IsColour(Board[startSq], ColourToMove)){
                 // Check which type of piece it is
                 // Rook, Bishop or Queen
                 if (Piece::IsSlidingPiece(Board[startSq])) {
@@ -643,38 +645,45 @@ void UpdateBoard(Move updateMove){
 
         // Castling left
         if (updateMove.target_square < updateMove.initial_square){
-            Board[updateMove.target_square+1]=Piece::Add(ColourtoMove, Piece::Figure::Rook);
+            Board[updateMove.target_square+1]=Piece::Add(ColourToMove, Piece::Figure::Rook);
             Board[updateMove.target_square-1]=Piece::Remove();
 
         // Castling right
         } else{
-            Board[updateMove.target_square-1]=Piece::Add(ColourtoMove, Piece::Figure::Rook);
+            Board[updateMove.target_square-1]=Piece::Add(ColourToMove, Piece::Figure::Rook);
             Board[updateMove.target_square+1]=Piece::Remove();
         };
 
         break;
 
+    // En Passant
+    case Move::MFlag::EnPassant :
+        Board[updateMove.target_square]=Board[updateMove.initial_square];
+        Board[updateMove.initial_square]=Piece::Remove();
+        Board[updateMove.target_square-8]=Piece::Remove();
+        break;
+
     // Pawn Promotions
     case Move::MFlag::PromoteRook :
-        Board[updateMove.target_square]=Piece::Add(ColourtoMove, Piece::Figure::Rook);
+        Board[updateMove.target_square]=Piece::Add(ColourToMove, Piece::Figure::Rook);
         Board[updateMove.initial_square]=Piece::Remove();
 
         break;
 
     case Move::MFlag::PromoteKnight :
-        Board[updateMove.target_square]=Piece::Add(ColourtoMove, Piece::Figure::Knight);
+        Board[updateMove.target_square]=Piece::Add(ColourToMove, Piece::Figure::Knight);
         Board[updateMove.initial_square]=Piece::Remove();
 
         break;
 
     case Move::MFlag::PromoteBishop :
-        Board[updateMove.target_square]=Piece::Add(ColourtoMove, Piece::Figure::Bishop);
+        Board[updateMove.target_square]=Piece::Add(ColourToMove, Piece::Figure::Bishop);
         Board[updateMove.initial_square]=Piece::Remove();
 
         break;
 
     case Move::MFlag::PromoteQueen :
-        Board[updateMove.target_square]=Piece::Add(ColourtoMove, Piece::Figure::Queen);
+        Board[updateMove.target_square]=Piece::Add(ColourToMove, Piece::Figure::Queen);
         Board[updateMove.initial_square]=Piece::Remove();
 
         break;
@@ -685,9 +694,10 @@ void UpdateBoard(Move updateMove){
         Board[updateMove.initial_square]=Piece::Remove();
         break;
     }
-    // En Passant move
-
     
+
+    // Update the lastMoves array
+    lastMoves[ColourToMove]=updateMove;
 
 
     // Castling checks after possible castling moves
@@ -695,20 +705,24 @@ void UpdateBoard(Move updateMove){
     // Updates anytime the king moves in the 5th file
     if (Piece::IsFigure(Board[updateMove.initial_square], Piece::King)){
         if (updateMove.initial_square%8 == 4){
-            LegalMoves::leftCastle[ColourtoMove]=false;
-            LegalMoves::rightCastle[ColourtoMove]=false;
+            LegalMoves::leftCastle[ColourToMove]=false;
+            LegalMoves::rightCastle[ColourToMove]=false;
         };
 
     // Updates anytime a rook moves from the edge files
     } else if (Piece::IsFigure(Board[updateMove.initial_square], Piece::Rook)){
         // Left file
         if (updateMove.initial_square%8 == 0){
-            LegalMoves::leftCastle[ColourtoMove]=false;
+            LegalMoves::leftCastle[ColourToMove]=false;
         // Right file
         } else if (updateMove.initial_square%8 == 7){
-            LegalMoves::rightCastle[ColourtoMove]=false;
+            LegalMoves::rightCastle[ColourToMove]=false;
         };
     };
+
+
+    // Finally, swap ColourToMove and EnemyColour
+    std::swap(ColourToMove, ColourEnemy);
 };
 
 // Function to move a piece to a square, from a square name i.e. a5c8

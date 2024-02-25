@@ -31,10 +31,10 @@ public:
     // Flag values:
     //
 
-    enum MFlag{None, Castling};
+    enum MFlag{None, Castling, PromoteRook, PromoteKnight, PromoteBishop, PromoteQueen};
 
     // Default constructor
-    Move(int initial, int target, int f=0){
+    Move(int initial=0, int target=0, MFlag f=None){
         initial_square=initial;
         target_square=target;
         flag=f;
@@ -45,6 +45,13 @@ public:
         initial_square=in_move.initial_square;
         target_square=in_move.target_square;
         flag=in_move.flag;
+    };
+
+    // Constructor for a move and a new flag
+    Move(const Move &in_move, MFlag f){
+        initial_square=in_move.initial_square;
+        target_square=in_move.target_square;
+        flag=f;
     };
 
 };
@@ -282,6 +289,7 @@ namespace LegalMoves{
         std::vector<Move> PawnMovesList;
         std::vector<int> diagonals(2);
         int targetSq, targetPc;
+        Move normalMove;
 
         // Only move N, NE or NW when the player colour is white
         if (ColourtoMove==Piece::Colour::White){
@@ -292,9 +300,10 @@ namespace LegalMoves{
 
                 // Check the forward square is empty
                 if (Piece::IsFigure(targetPc, Piece::Figure::None)){
-                    PawnMovesList.push_back(Move(startSq, targetSq));
+                    normalMove=Move(startSq, targetSq);
                 };
             };
+
             // Charging
             // Check if the pawn is in the second row from it's side, if so allow it to charge
             if (startSq > 7 && startSq < 16 && SquaresToEdge[startSq][0] > 1){
@@ -306,6 +315,7 @@ namespace LegalMoves{
                     PawnMovesList.push_back(Move(startSq, targetSq));
                 };
             };
+
             // Attacking
             diagonals={4, 7}; // NE and NW
 
@@ -316,7 +326,7 @@ namespace LegalMoves{
 
                     // Check that the piece in the diagonal square is an enemy piece
                     if (Piece::IsColour(targetPc, ColourEnemy)){
-                        PawnMovesList.push_back(Move(startSq, targetSq));
+                        normalMove=Move(startSq, targetSq);
                     };
                 };
             };
@@ -330,9 +340,10 @@ namespace LegalMoves{
                 
                 // Check the forward square is empty
                 if (Piece::IsFigure(targetPc, Piece::Figure::None)){
-                    PawnMovesList.push_back(Move(startSq, targetSq));
+                    normalMove=Move(startSq, targetSq);
                 };
             };
+
             // Charging
             // Check if the pawn is in the second row from it's side, if so allow it to charge
             if (startSq > 7 && startSq < 16 && SquaresToEdge[startSq][0] > 1){
@@ -344,6 +355,7 @@ namespace LegalMoves{
                     PawnMovesList.push_back(Move(startSq, targetSq));
                 };
             };
+
             // Attacking
             diagonals={5, 6}; // SW and SE
 
@@ -354,13 +366,24 @@ namespace LegalMoves{
 
                     // Check that the piece in the diagonal square is an enemy piece
                     if (Piece::IsColour(targetPc, ColourEnemy)){
-                        PawnMovesList.push_back(Move(startSq, targetSq));
+                        normalMove=Move(startSq, targetSq);
                     };
                 };
             };
         };
 
-    
+        // Check for Pawn promotion
+        if (targetSq > 55 || targetSq < 8){
+            // If a pawn is moving the the first or last rows, add the move with each of the promotion flags
+            PawnMovesList.push_back(Move(normalMove, Move::MFlag::PromoteRook));
+            PawnMovesList.push_back(Move(normalMove, Move::MFlag::PromoteKnight));
+            PawnMovesList.push_back(Move(normalMove, Move::MFlag::PromoteBishop));
+            PawnMovesList.push_back(Move(normalMove, Move::MFlag::PromoteQueen));
+            // Otherwise, just add the move without the flag
+        } else{
+            PawnMovesList.push_back(normalMove);
+        };
+
         return PawnMovesList;
     };
 
@@ -631,6 +654,30 @@ void UpdateBoard(Move updateMove){
 
         break;
 
+    // Pawn Promotions
+    case Move::MFlag::PromoteRook :
+        Board[updateMove.target_square]=Piece::Add(ColourtoMove, Piece::Figure::Rook);
+        Board[updateMove.initial_square]=Piece::Remove();
+
+        break;
+
+    case Move::MFlag::PromoteKnight :
+        Board[updateMove.target_square]=Piece::Add(ColourtoMove, Piece::Figure::Knight);
+        Board[updateMove.initial_square]=Piece::Remove();
+
+        break;
+
+    case Move::MFlag::PromoteBishop :
+        Board[updateMove.target_square]=Piece::Add(ColourtoMove, Piece::Figure::Bishop);
+        Board[updateMove.initial_square]=Piece::Remove();
+
+        break;
+
+    case Move::MFlag::PromoteQueen :
+        Board[updateMove.target_square]=Piece::Add(ColourtoMove, Piece::Figure::Queen);
+        Board[updateMove.initial_square]=Piece::Remove();
+
+        break;
 
     default:
         // Regular move
@@ -647,7 +694,7 @@ void UpdateBoard(Move updateMove){
 
     // Updates anytime the king moves in the 5th file
     if (Piece::IsFigure(Board[updateMove.initial_square], Piece::King)){
-        if ((updateMove.initial_square+1)%8 == 5){
+        if (updateMove.initial_square%8 == 4){
             LegalMoves::leftCastle[ColourtoMove]=false;
             LegalMoves::rightCastle[ColourtoMove]=false;
         };
@@ -655,10 +702,10 @@ void UpdateBoard(Move updateMove){
     // Updates anytime a rook moves from the edge files
     } else if (Piece::IsFigure(Board[updateMove.initial_square], Piece::Rook)){
         // Left file
-        if ((updateMove.initial_square+1)%8 == 1){
+        if (updateMove.initial_square%8 == 0){
             LegalMoves::leftCastle[ColourtoMove]=false;
         // Right file
-        } else if ((updateMove.initial_square+1)%8 == 1){
+        } else if (updateMove.initial_square%8 == 7){
             LegalMoves::rightCastle[ColourtoMove]=false;
         };
     };
@@ -711,7 +758,7 @@ std::string White_Move, Black_Move;
 // Program loop
 Print_Board();
 
-std::cout << "White player, Please enter your move, from initial square to target square i.e. a4c3: ";
+//std::cout << "White player, Please enter your move, from initial square to target square i.e. a4c3: ";
 
 //getline(std::cin, White_Move);
 

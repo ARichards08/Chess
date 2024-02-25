@@ -22,22 +22,29 @@ int ColourtoMove=1, ColourEnemy=0;
 
 // Classes
 
-// Move class, just holds a initial square and a target square
+// Move class, holds a initial square, a target square and a flag
 class Move{
 public:
     int initial_square;
     int target_square;
+    int flag;
+    // Flag values:
+    //
+
+    enum MFlag{None, Castling};
 
     // Default constructor
-    Move(int initial, int target){
+    Move(int initial, int target, int f=0){
         initial_square=initial;
         target_square=target;
+        flag=f;
     };
 
     // Copy constructor
     Move(const Move &in_move){
         initial_square=in_move.initial_square;
         target_square=in_move.target_square;
+        flag=in_move.flag;
     };
 
 };
@@ -55,7 +62,7 @@ namespace Piece{
     enum Colour{Black, White};
 
     // Function to add a piece to a square, returns the piece's int value
-     int Add(Colour Col, Figure Fig){
+     int Add(int Col, Figure Fig){
         return Col*6+Fig;
     };
 
@@ -224,7 +231,7 @@ namespace LegalMoves{
     };
 
     // Array of two boolean constants, [0] for black and [1] for white, same as the colours. Set to true initially, if King or Rooks are moved its set to false
-    const static std::vector<bool> leftCastle(2, true), rightCastle(2, true);
+    std::vector<bool> leftCastle(2, true), rightCastle(2, true);
 
     // Function to generate the pseudo-legal King moves
     // Will include Castling
@@ -248,26 +255,22 @@ namespace LegalMoves{
             };
         };
 
-        // Castling, handles both the rook and king moves
+        // Castling, only saves the king move
 
         // If neither King nor left Rook has moved
         if (leftCastle[ColourtoMove]==true){
-            // If the three squares between the left Rook and the King are empty, add the moves
+            // If the three squares between the left Rook and the King are empty, add the move
             if (Piece::IsFigure(Board[startSq-1], Piece::Figure::None) && Piece::IsFigure(Board[startSq-2], Piece::Figure::None) && Piece::IsFigure(Board[startSq-3], Piece::Figure::None)){
                 // Add King move
-                KingMovesList.push_back(Move(startSq, startSq-3));
-                // Add Rook move
-                KingMovesList.push_back(Move(startSq-4, startSq-2));
+                KingMovesList.push_back(Move(startSq, startSq-3, Move::MFlag::Castling));
             };
         };
         // Same again but for right
         if (leftCastle[ColourtoMove]==true){
-            // If the two squares between the right Rook and the King are empty, add the moves
+            // If the two squares between the right Rook and the King are empty, add the move
             if (Piece::IsFigure(Board[startSq+1], Piece::Figure::None) && Piece::IsFigure(Board[startSq+2], Piece::Figure::None)){
                 // Add King move
-                KingMovesList.push_back(Move(startSq, startSq+2));
-                // Add Rook move
-                KingMovesList.push_back(Move(startSq+3, startSq+1));
+                KingMovesList.push_back(Move(startSq, startSq+2, Move::MFlag::Castling));
             };
         };
 
@@ -604,19 +607,72 @@ std::string Ind2Ref(int Ind){
 };
 
 // Function to move a piece to a square, from a square index i.e. 40 -> 56
-void MakeMove(int initial, int target){
-    Board[target]=Board[initial];
-    Board[initial]=Piece::Remove();
+void UpdateBoard(Move updateMove){
+
+
+    // Use a switch statement here for the flags of the different moves
+    switch (updateMove.flag)
+    {
+    case Move::MFlag::Castling :
+        // Move King
+        Board[updateMove.target_square]=Board[updateMove.initial_square];
+        Board[updateMove.initial_square]=Piece::Remove();
+
+        // Castling left
+        if (updateMove.target_square < updateMove.initial_square){
+            Board[updateMove.target_square+1]=Piece::Add(ColourtoMove, Piece::Figure::Rook);
+            Board[updateMove.target_square-1]=Piece::Remove();
+
+        // Castling right
+        } else{
+            Board[updateMove.target_square-1]=Piece::Add(ColourtoMove, Piece::Figure::Rook);
+            Board[updateMove.target_square+1]=Piece::Remove();
+        };
+
+        break;
+
+
+    default:
+        // Regular move
+        Board[updateMove.target_square]=Board[updateMove.initial_square];
+        Board[updateMove.initial_square]=Piece::Remove();
+        break;
+    }
+    // En Passant move
+
+    
+
+
+    // Castling checks after possible castling moves
+
+    // Updates anytime the king moves in the 5th file
+    if (Piece::IsFigure(Board[updateMove.initial_square], Piece::King)){
+        if ((updateMove.initial_square+1)%8 == 5){
+            LegalMoves::leftCastle[ColourtoMove]=false;
+            LegalMoves::rightCastle[ColourtoMove]=false;
+        };
+
+    // Updates anytime a rook moves from the edge files
+    } else if (Piece::IsFigure(Board[updateMove.initial_square], Piece::Rook)){
+        // Left file
+        if ((updateMove.initial_square+1)%8 == 1){
+            LegalMoves::leftCastle[ColourtoMove]=false;
+        // Right file
+        } else if ((updateMove.initial_square+1)%8 == 1){
+            LegalMoves::rightCastle[ColourtoMove]=false;
+        };
+    };
 };
 
 // Function to move a piece to a square, from a square name i.e. a5c8
-void MakeMove(std::string input){
+void UpdateBoard(std::string input){
     int initial, target;
 
     initial=Ref2Idx(input.substr(0, 2)), target=Ref2Idx(input.substr(2, 2));
 
-    Board[target]=Board[initial];
-    Board[initial]=Piece::Remove();
+    Move inputMove(initial, target);
+
+    UpdateBoard(inputMove);
 };
 
 // Function to take a player's input to move a piece
@@ -625,7 +681,7 @@ void Player_move(std::string &input_move){
     input_move_syntax(input_move);
 
     // Then perform move
-    MakeMove(input_move);
+    UpdateBoard(input_move);
 };
 
 //////////
@@ -642,9 +698,10 @@ Setup_Board();
 std::vector<Move> MoveList;
 
 MoveList=LegalMoves::GenerateMoves();
-for (int i=0; i<MoveList.size(); i++){
-    std::cout << Ind2Ref(MoveList[i].initial_square) << " " << Ind2Ref(MoveList[i].target_square) << std::endl;
-};
+//for (int i=0; i<MoveList.size(); i++){
+//    std::cout << Ind2Ref(MoveList[i].initial_square) << " " << Ind2Ref(MoveList[i].target_square) << std::endl;
+//};
+std::cout << "Number of moves: " << MoveList.size() << std::endl;
 
 // Test stuff
 

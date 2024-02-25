@@ -223,11 +223,16 @@ namespace LegalMoves{
         return KnightMovesList;
     };
 
+    // Array of two boolean constants, [0] for black and [1] for white, same as the colours. Set to true initially, if King or Rooks are moved its set to false
+    const static std::vector<bool> leftCastle(2, true), rightCastle(2, true);
+
     // Function to generate the pseudo-legal King moves
+    // Will include Castling
     std::vector<Move> GenerateKingMoves(int startSq){
         std::vector<Move> KingMovesList;
         int targetSq, targetPc;
 
+        // Regular Moves
         for (int directionId=0; directionId<8; directionId++){
             if (SquaresToEdge[startSq][directionId] > 0){
 
@@ -240,6 +245,29 @@ namespace LegalMoves{
                 } else{
                     KingMovesList.push_back(Move(startSq, targetSq));
                 };
+            };
+        };
+
+        // Castling, handles both the rook and king moves
+
+        // If neither King nor left Rook has moved
+        if (leftCastle[ColourtoMove]==true){
+            // If the three squares between the left Rook and the King are empty, add the moves
+            if (Piece::IsFigure(Board[startSq-1], Piece::Figure::None) && Piece::IsFigure(Board[startSq-2], Piece::Figure::None) && Piece::IsFigure(Board[startSq-3], Piece::Figure::None)){
+                // Add King move
+                KingMovesList.push_back(Move(startSq, startSq-3));
+                // Add Rook move
+                KingMovesList.push_back(Move(startSq-4, startSq-2));
+            };
+        };
+        // Same again but for right
+        if (leftCastle[ColourtoMove]==true){
+            // If the two squares between the right Rook and the King are empty, add the moves
+            if (Piece::IsFigure(Board[startSq+1], Piece::Figure::None) && Piece::IsFigure(Board[startSq+2], Piece::Figure::None)){
+                // Add King move
+                KingMovesList.push_back(Move(startSq, startSq+2));
+                // Add Rook move
+                KingMovesList.push_back(Move(startSq+3, startSq+1));
             };
         };
 
@@ -336,7 +364,9 @@ namespace LegalMoves{
 
     // Function to calculate the number of squares to generate a list of legal moves at each position
     // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
-    // Special moves: Pawn charge, En Passant, Castling, Promotion
+    // Special moves still to do: En Passant, Castling, Promotion
+    // For promotion, also need to think about how the input move will dictate which piece the pawn becomes. if the final character is 8 or 1, and the piece is a pawn,
+    // accept another character at the end to say which piece it should become
     
     std::vector<Move> GenerateMoves(){
         std::vector<Move> MovesList, TempMoves;

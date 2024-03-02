@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm> // find_if
 
 // Global Variables
 
@@ -91,6 +92,7 @@ namespace Piece{
             };
         };
         // If the square is empty
+
         return false;
     };
 
@@ -316,7 +318,7 @@ namespace LegalMoves{
 
             // Charging
             // Check if the pawn is in the second row from it's side, if so allow it to charge
-            if (startSq > 7 && startSq < 16 && SquaresToEdge[startSq][0] > 1){
+            if (startSq > 7 && startSq < 16){
                 targetSq=startSq+SlidingDirections[0]*2;
                 targetPc=Board[targetSq];
 
@@ -341,10 +343,12 @@ namespace LegalMoves{
                     };
 
                     // En Passant check
-                    // Check if the last enemy move was a pawn charge to a square on either side of the current pawn 
+                    // Check if the last enemy move was a pawn charge to a square on either side of the current pawn
+                    // Can't promote on an en passant move so no check
+                    // Have to check the board edges as well
                     if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
-                        if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==1)){
-                            PawnMovesList.push_back(Move(startSq, targetSq));
+                        if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 1 && SquaresToEdge[startSq][7] > 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==0 && SquaresToEdge[startSq][4] > 0)){
+                            PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
                         };
                     };
 
@@ -367,8 +371,8 @@ namespace LegalMoves{
 
             // Charging
             // Check if the pawn is in the second row from it's side, if so allow it to charge
-            if (startSq > 7 && startSq < 16 && SquaresToEdge[startSq][0] > 1){
-                targetSq=startSq+SlidingDirections[0]*2;
+            if (startSq > 47 && startSq < 56){
+                targetSq=startSq+SlidingDirections[1]*2;
                 targetPc=Board[targetSq];
 
                 // Check the forward square is empty
@@ -394,12 +398,13 @@ namespace LegalMoves{
 
                     // En Passant check
                     // Check if the last enemy move was a pawn charge to a square on either side of the current pawn 
+                    // Can't promote on an en passant move so no check
                     if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
-                        if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==1)){
-                            PawnMovesList.push_back(Move(startSq, targetSq));
+                        if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 0 && SquaresToEdge[startSq][5] > 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==1 && SquaresToEdge[startSq][6] > 0)){
+                            PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
                         };
                     };
-                    
+
                 };
             };
         };
@@ -410,10 +415,6 @@ namespace LegalMoves{
 
     // Function to calculate the number of squares to generate a list of legal moves at each position
     // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
-    // Special moves still to do: En Passant, Castling, Promotion
-    // For promotion, also need to think about how the input move will dictate which piece the pawn becomes. if the final character is 8 or 1, and the piece is a pawn,
-    // accept another character at the end to say which piece it should become
-    
     std::vector<Move> GenerateMoves(){
         std::vector<Move> MovesList, TempMoves;
 
@@ -542,13 +543,19 @@ void Print_Board(){
 
 // Function to check if an inputted move uses two squares on the board, syntax check
 void input_move_syntax(std::string &str){
-    bool let_dig_check=false, length_check=false, dup_check=false;
+    bool let_dig_check=false, length_check=false, dup_check=false, promo_check=true;
     int sum;
 
-    while (let_dig_check==false || length_check==false || dup_check==false){
-        length_check=false, let_dig_check=false, dup_check=false;
-        // Inputted move must be four characters long
-        if (str.length()==4) length_check=true;
+    while (let_dig_check==false || length_check==false || dup_check==false || promo_check==false){
+        length_check=false, let_dig_check=false, dup_check=false, promo_check=true;
+        // Inputted normal moves must be four characters long
+        if (str.length()==4 ) length_check=true;
+
+        // Promotion moves are 5 characters long, only need to check the fifth character if the length is 5
+        if (str.length()==5){
+            length_check=true;
+            if (str[4]!='Q' && str[4]!='B' && str[4]!='K' && str[4]!='R') promo_check=false;
+        };
 
         // First two and last two characters must be a letter a-h and a number 1-8
         sum=0;
@@ -559,17 +566,21 @@ void input_move_syntax(std::string &str){
         };
         if (sum==4) let_dig_check=true;
 
+        // Checking the move isn't moving to the same square
         if (str.substr(0, 2) != str.substr(2, 2)) dup_check=true;
 
         // Get a new move entered by the player if the one entered was invalid
         if (length_check==false){
-            std::cout << "Please ensure that the length of your move is 4 characters long: ";
+            std::cout << "Please ensure that the length of your move is 4 characters long (5 for castling and promotion): ";
             getline(std::cin, str);
         } else if (let_dig_check==false) {
             std::cout << "Please ensure that the files are lowercase letters a-h and the rows are integers 1-8: ";
             getline(std::cin, str);
         } else if (dup_check==false) {
             std::cout << "Please ensure that the target square is not the same as the initial square: ";
+            getline(std::cin, str);
+        } else if (promo_check==false){
+            std::cout << " Please ensure that castling and promotion moves include the correct special character, Q, B, K, R for promotions, C for castling: ";
             getline(std::cin, str);
         };
     };
@@ -678,7 +689,14 @@ void UpdateBoard(Move updateMove){
     case Move::MFlag::EnPassant :
         Board[updateMove.target_square]=Board[updateMove.initial_square];
         Board[updateMove.initial_square]=Piece::Remove();
-        Board[updateMove.target_square-8]=Piece::Remove();
+
+        // Determine whether or not to remove the piece above or below the target square depending on the colour
+        if (ColourToMove==Piece::Colour::White){
+            Board[updateMove.target_square-8]=Piece::Remove();
+        } else {
+            Board[updateMove.target_square+8]=Piece::Remove();
+        };
+    
         break;
 
     // Pawn Promotions
@@ -743,24 +761,75 @@ void UpdateBoard(Move updateMove){
     std::swap(ColourToMove, ColourEnemy);
 };
 
-// Function to move a piece to a square, from a square name i.e. a5c8
-void UpdateBoard(std::string input){
-    int initial, target;
+// Function to search a list of moves, looking for a match for an initial and target square. If pawn promotion, checks for promo flags
+Move FindMove(Move inMove, std::vector<Move> MoveList){
+    std::vector<Move>::iterator it;
 
-    initial=Ref2Idx(input.substr(0, 2)), target=Ref2Idx(input.substr(2, 2));
+    // inMove either has flag=None or a promotion flag
+    if (inMove.flag==Move::MFlag::None){
+        it=std::find_if(MoveList.begin(), MoveList.end(), [&inMove](Move i){
+            if (inMove.initial_square==i.initial_square && inMove.target_square==i.target_square){
+                return true;
+            } else {
+                return false;
+            };
+        });
+    // Promotion moves
+    } else {
+        it=std::find_if(MoveList.begin(), MoveList.end(), [&inMove](Move i){
+            if (inMove.initial_square==i.initial_square && inMove.target_square==i.target_square && inMove.flag==i.flag){
+                return true;
+            } else {
+                return false;
+            };
+        });
+    };
 
-    Move inputMove(initial, target);
-
-    UpdateBoard(inputMove);
+    if (it==MoveList.end()) return Move(0, 0);
+    return *it;
 };
 
 // Function to take a player's input to move a piece
-void Player_move(std::string &input_move){
-    // First check syntax
-    input_move_syntax(input_move);
+void attemptedMove(std::string &input, std::vector<Move> &MoveList){
+    int initial, target;
+    Move::MFlag flag;
+    Move finalMove;
+    std::string reenteredInput;
 
-    // Then perform move
-    UpdateBoard(input_move);
+    // First check syntax
+    input_move_syntax(input);
+
+    // Check for the move in the MoveList
+    initial=Ref2Idx(input.substr(0, 2)), target=Ref2Idx(input.substr(2, 2)), flag=Move::MFlag::None;
+
+    // Only need to specify flags for promotions
+    if (input.length()==5){
+        if (input[4]=='Q'){
+            flag=Move::MFlag::PromoteQueen;
+        } else if (input[4]=='B'){
+            flag=Move::MFlag::PromoteBishop;
+        } else if (input[4]=='K'){
+            flag=Move::MFlag::PromoteKnight;
+        } else if (input[4]=='R'){
+            flag=Move::MFlag::PromoteRook;
+        };
+    };
+
+    Move searchMove(initial, target, flag);
+
+    // Find move in the MoveList
+    finalMove=FindMove(searchMove, MoveList);
+
+    // If the move isn't in the MoveList it returns a1a1, which correpsonds to an illegal move
+    // Otherwise, perform the move that was found
+    if (!(finalMove.initial_square==0 && finalMove.target_square==0)){
+        UpdateBoard(finalMove);
+    } else {
+        std::cout << "Illegal move, please reenter your move: ";
+        getline(std::cin, reenteredInput);
+        attemptedMove(reenteredInput, MoveList);
+    };
+
 };
 
 //////////
@@ -776,11 +845,11 @@ Setup_Board();
 // Move list
 std::vector<Move> MoveList;
 
-MoveList=LegalMoves::GenerateMoves();
+//MoveList=LegalMoves::GenerateMoves();
 //for (int i=0; i<MoveList.size(); i++){
 //    std::cout << Ind2Ref(MoveList[i].initial_square) << " " << Ind2Ref(MoveList[i].target_square) << std::endl;
 //};
-std::cout << "Number of moves: " << MoveList.size() << std::endl;
+//std::cout << "Number of moves: " << MoveList.size() << std::endl;
 
 // Test stuff
 
@@ -790,11 +859,27 @@ std::string White_Move, Black_Move;
 // Program loop
 Print_Board();
 
-//std::cout << "White player, Please enter your move, from initial square to target square i.e. a4c3: ";
+std::cout << "Moves are input as the starting square followed by the target square i.e. a4c3. Castling is done by moving the King to the catled square followed by a C i.e. e8g8C. Promotion moves include a fifth character at the end, Q, B, K, R, i.e a7a8Q." << std::endl;
+
+while (true){
+    std::cout << lastMoves[ColourEnemy].flag << std::endl;
+    std::cout << "White player move: ";
+    getline(std::cin, White_Move);
+    MoveList=LegalMoves::GenerateMoves();
+    attemptedMove(White_Move, MoveList);
+    Print_Board();
+
+    std::cout << lastMoves[ColourEnemy].flag << std::endl;
+    std::cout << "Black player move: ";
+    getline(std::cin, Black_Move);
+    MoveList=LegalMoves::GenerateMoves();
+    attemptedMove(Black_Move, MoveList);
+    Print_Board();
+};
 
 //getline(std::cin, White_Move);
 
-//Player_move(White_Move);
+//attempetedMove(White_Move);
 
 //Print_Board();
 

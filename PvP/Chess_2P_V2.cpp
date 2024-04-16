@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <algorithm> // find_if
+#include <map> // Loading from FEN
 
 // Global Variables
 
@@ -459,25 +460,71 @@ namespace LegalMoves{
 
 // Functions
 
-// Function to setup the chess board at the start of the program
-void Setup_Board(){
-    // Add Row 1, White non-pawns
-    Board[0]=Piece::Add(Piece::White, Piece::Rook), Board[1]=Piece::Add(Piece::White, Piece::Knight), Board[2]=Piece::Add(Piece::White, Piece::Bishop), Board[3]=Piece::Add(Piece::White, Piece::Queen), Board[4]=Piece::Add(Piece::White, Piece::King), Board[5]=Piece::Add(Piece::White, Piece::Bishop), Board[6]=Piece::Add(Piece::White, Piece::Knight), Board[7]=Piece::Add(Piece::White, Piece::Rook);
-    // Add Row 2, White pawns
-    for (int i=8*1; i<8*2; i++){
-        Board[i]=Piece::Add(Piece::White, Piece::Pawn);
+// Function for setting up the board from a FEN string, default argument is the initial board position
+void SetupBoard(std::string FENstring="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"){
+    char piece;
+    int square=56, empty;
+    std::string row, FENboard;
+    std::size_t pre=0;
+    Piece::Colour PieceColour;
+    Piece::Figure PieceType;
+
+    // Map of lowercase characters in FEN to piece types
+    std::map<char, Piece::Figure> PieceFromSymbol{
+        {'k', Piece::Figure::King}, {'q', Piece::Figure::Queen}, {'b', Piece::Figure::Bishop},
+        {'n', Piece::Figure::Knight}, {'r', Piece::Figure::Rook}, {'p', Piece::Figure::Pawn}
     };
-    // Add empty Row 3-6
-    for (int i=8*2; i<8*6; i++){
+
+    // Split the FEN string to just have the piece positions
+    FENboard=FENstring.substr(0, FENstring.find(' '));
+
+    for (int i=0; i<8; i++){
+        // Extract each row from the FENboard
+        std::size_t post=FENboard.find('/', pre);
+        if (post==std::string::npos) post=FENboard.length();
+
+        row=FENboard.substr(pre, post-pre);
+        //std::cout << row << '|' << std::endl;
+
+        // Iterate through each character in the row string, filling in squares
+        for (int j=0; j<row.length(); j++){
+
+            // If the character is a digit, add that many consequective empty squares
+            if (isdigit(row[j])){
+                empty=row[j] - '0'; // Cast char to int by subtracting '0'
+                while (empty > 0){
+                    Board[square]=Piece::Remove();
+                    square++;
+                    empty--;
+                };
+            } else {
+
+                // Find colour from the case of the character, uppercase is white, lowercase is black
+                if (isupper(row[j])){
+                    PieceColour=Piece::Colour::White;
+                } else {
+                    PieceColour=Piece::Colour::Black;
+                };
+
+                PieceType=PieceFromSymbol[tolower(row[j])];
+
+                Board[square]=Piece::Add(PieceColour, PieceType);
+                square++;
+            };
+        };
+        // Move down a rank
+        square=square-16;
+
+        pre=post+1;
+    };
+};
+
+// Function to clear the board
+void ClearBoard(){
+    for (int i=0; i<Board.size(); i++){
         Board[i]=Piece::Remove();
     };
-    // Add Row 7, Black Pawns
-    for (int i=8*6; i<8*7; i++){
-        Board[i]=Piece::Add(Piece::Black, Piece::Pawn);
-    };
-    // Add Row 8, Black non-pawns
-    Board[56]=Piece::Add(Piece::Black, Piece::Rook), Board[57]=Piece::Add(Piece::Black, Piece::Knight), Board[58]=Piece::Add(Piece::Black, Piece::Bishop), Board[59]=Piece::Add(Piece::Black, Piece::Queen), Board[60]=Piece::Add(Piece::Black, Piece::King), Board[61]=Piece::Add(Piece::Black, Piece::Bishop), Board[62]=Piece::Add(Piece::Black, Piece::Knight), Board[63]=Piece::Add(Piece::Black, Piece::Rook);
-};
+}
 
 // Function to return 2 letters as a piece instead of an int, makes the board more readable before graphics are implemented
 std::string Reference(int Position){
@@ -840,7 +887,7 @@ int main (){
 
 
 // Setup Board
-Setup_Board();
+SetupBoard();
 
 // Move list
 std::vector<Move> MoveList;
@@ -859,17 +906,17 @@ std::string White_Move, Black_Move;
 // Program loop
 Print_Board();
 
+
+
 std::cout << "Moves are input as the starting square followed by the target square i.e. a4c3. Castling is done by moving the King to the catled square followed by a C i.e. e8g8C. Promotion moves include a fifth character at the end, Q, B, K, R, i.e a7a8Q." << std::endl;
 
 while (true){
-    std::cout << lastMoves[ColourEnemy].flag << std::endl;
     std::cout << "White player move: ";
     getline(std::cin, White_Move);
     MoveList=LegalMoves::GenerateMoves();
     attemptedMove(White_Move, MoveList);
     Print_Board();
 
-    std::cout << lastMoves[ColourEnemy].flag << std::endl;
     std::cout << "Black player move: ";
     getline(std::cin, Black_Move);
     MoveList=LegalMoves::GenerateMoves();

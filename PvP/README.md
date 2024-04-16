@@ -16,3 +16,12 @@ Going to try to use Qt for GUI purposes
 
 V2 list:
 Pieces need to be represented by numbers. I can worry about size and optimisation later, just start with the board being a vector of ints.
+
+
+List to do:
+Check states
+Do this by keeping track of squares that the enemy is attacking on a turn
+Also keep track of pinned pieces for discovered checks
+
+
+Testing the move list

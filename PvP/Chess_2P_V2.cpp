@@ -8,7 +8,7 @@
 // Global Variables
 
 // Board
-std::vector<int> Board(64, 0);
+std::vector<int> Board(64, 0), PieceSquares;
 
 // Colour that is currently to move, can be updated by assigning Piece::Colour
 int ColourToMove=1, ColourEnemy=0;
@@ -68,13 +68,22 @@ namespace Piece{
     enum Colour{Black, White};
 
     // Function to add a piece to a square, returns the piece's int value
-     int Add(int Col, Figure Fig){
-        return Col*6+Fig;
+    void Add(int sq, int Col, Figure Fig){
+        Board[sq]=Col*6+Fig;
+
+        // If the square doesn't already have a piece on it, add it to the PieceSquares array
+        if (std::find(std::begin(PieceSquares), std::end(PieceSquares), sq) == std::end(PieceSquares)) PieceSquares.push_back(sq);
     };
 
     // Function to remove a piece from a square, improves readability
-     int Remove(){
-        return None;
+    void Remove(int sq){
+
+        Board[sq]=None;
+
+        auto sq_it=std::find(std::begin(PieceSquares), std::end(PieceSquares), sq);
+
+        // Remove square from PieceSquare array
+        if (sq_it != std::end(PieceSquares)) PieceSquares.erase(sq_it);
     };
 
     // Function returning a boolean on whether a piece is the chosen colour
@@ -118,6 +127,12 @@ namespace Piece{
             return false;
         }
     };
+
+    // Function to return the figure of a piece on a given square
+    Figure ReturnFigure(int pc){
+        if (pc > 6) pc-=6;
+        return (Figure) pc; // Cast to enum
+    }
 };
 
 
@@ -154,6 +169,10 @@ namespace LegalMoves{
     };
 
     const static std::vector<std::vector<int>> SquaresToEdge(PrecomputingData());
+
+
+
+
 
     // Function to generate the pseudo-legal sliding piece moves
     // use insert to add the sliding moves to the move list
@@ -418,8 +437,11 @@ namespace LegalMoves{
     // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
     std::vector<Move> GenerateMoves(){
         std::vector<Move> MovesList, TempMoves;
+        int startSq;
 
-        for (int startSq=0; startSq<64; startSq++){
+        // Iterate over the PieceSquares array instead of the whole board
+        for (int sq=0; sq<PieceSquares.size(); sq++){
+            startSq=PieceSquares[sq];
             // Check the colour of the piece on the square is the colour to play
             if (Piece::IsColour(Board[startSq], ColourToMove)){
                 // Check which type of piece it is
@@ -493,7 +515,7 @@ void SetupBoard(std::string FENstring="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB
             if (isdigit(row[j])){
                 empty=row[j] - '0'; // Cast char to int by subtracting '0'
                 while (empty > 0){
-                    Board[square]=Piece::Remove();
+                    Piece::Remove(square);
                     square++;
                     empty--;
                 };
@@ -508,7 +530,7 @@ void SetupBoard(std::string FENstring="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB
 
                 PieceType=PieceFromSymbol[tolower(row[j])];
 
-                Board[square]=Piece::Add(PieceColour, PieceType);
+                Piece::Add(square, PieceColour, PieceType);
                 square++;
             };
         };
@@ -522,7 +544,7 @@ void SetupBoard(std::string FENstring="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB
 // Function to clear the board
 void ClearBoard(){
     for (int i=0; i<Board.size(); i++){
-        Board[i]=Piece::Remove();
+        Piece::Remove(i);
     };
 }
 
@@ -708,7 +730,7 @@ std::string Ind2Ref(int Ind){
 };
 
 // Function to move a piece to a square, from a square index i.e. 40 -> 56
-void UpdateBoard(Move updateMove){
+void MakeMove(Move updateMove){
 
 
     // Use a switch statement here for the flags of the different moves
@@ -716,65 +738,68 @@ void UpdateBoard(Move updateMove){
     {
     case Move::MFlag::Castling :
         // Move King
-        Board[updateMove.target_square]=Board[updateMove.initial_square];
-        Board[updateMove.initial_square]=Piece::Remove();
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::ReturnFigure(Board[updateMove.initial_square]));
+        //Board[updateMove.target_square]=Board[updateMove.initial_square];
+        Piece::Remove(updateMove.initial_square);
 
         // Castling left
         if (updateMove.target_square < updateMove.initial_square){
-            Board[updateMove.target_square+1]=Piece::Add(ColourToMove, Piece::Figure::Rook);
-            Board[updateMove.target_square-1]=Piece::Remove();
+            Piece::Add(updateMove.target_square+1, ColourToMove, Piece::Figure::Rook);
+            Piece::Remove(updateMove.target_square-1);
 
         // Castling right
         } else{
-            Board[updateMove.target_square-1]=Piece::Add(ColourToMove, Piece::Figure::Rook);
-            Board[updateMove.target_square+1]=Piece::Remove();
+            Piece::Add(updateMove.target_square-1, ColourToMove, Piece::Figure::Rook);
+            Piece::Remove(updateMove.target_square+1);
         };
 
         break;
 
     // En Passant
     case Move::MFlag::EnPassant :
-        Board[updateMove.target_square]=Board[updateMove.initial_square];
-        Board[updateMove.initial_square]=Piece::Remove();
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::ReturnFigure(Board[updateMove.initial_square]));
+        //Board[updateMove.target_square]=Board[updateMove.initial_square];
+        Piece::Remove(updateMove.initial_square);
 
         // Determine whether or not to remove the piece above or below the target square depending on the colour
         if (ColourToMove==Piece::Colour::White){
-            Board[updateMove.target_square-8]=Piece::Remove();
+            Piece::Remove(updateMove.target_square-8);
         } else {
-            Board[updateMove.target_square+8]=Piece::Remove();
+            Piece::Remove(updateMove.target_square+8);
         };
     
         break;
 
     // Pawn Promotions
     case Move::MFlag::PromoteRook :
-        Board[updateMove.target_square]=Piece::Add(ColourToMove, Piece::Figure::Rook);
-        Board[updateMove.initial_square]=Piece::Remove();
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::Rook);
+        Piece::Remove(updateMove.initial_square);
 
         break;
 
     case Move::MFlag::PromoteKnight :
-        Board[updateMove.target_square]=Piece::Add(ColourToMove, Piece::Figure::Knight);
-        Board[updateMove.initial_square]=Piece::Remove();
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::Knight);
+        Piece::Remove(updateMove.initial_square);
 
         break;
 
     case Move::MFlag::PromoteBishop :
-        Board[updateMove.target_square]=Piece::Add(ColourToMove, Piece::Figure::Bishop);
-        Board[updateMove.initial_square]=Piece::Remove();
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::Bishop);
+        Piece::Remove(updateMove.initial_square);
 
         break;
 
     case Move::MFlag::PromoteQueen :
-        Board[updateMove.target_square]=Piece::Add(ColourToMove, Piece::Figure::Queen);
-        Board[updateMove.initial_square]=Piece::Remove();
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::Queen);
+        Piece::Remove(updateMove.initial_square);
 
         break;
 
     default:
         // Regular move
-        Board[updateMove.target_square]=Board[updateMove.initial_square];
-        Board[updateMove.initial_square]=Piece::Remove();
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::ReturnFigure(Board[updateMove.initial_square]));
+        //Board[updateMove.target_square]=Board[updateMove.initial_square];
+        Piece::Remove(updateMove.initial_square);
         break;
     }
     
@@ -870,7 +895,7 @@ void attemptedMove(std::string &input, std::vector<Move> &MoveList){
     // If the move isn't in the MoveList it returns a1a1, which correpsonds to an illegal move
     // Otherwise, perform the move that was found
     if (!(finalMove.initial_square==0 && finalMove.target_square==0)){
-        UpdateBoard(finalMove);
+        MakeMove(finalMove);
     } else {
         std::cout << "Illegal move, please reenter your move: ";
         getline(std::cin, reenteredInput);
@@ -892,13 +917,18 @@ SetupBoard();
 // Move list
 std::vector<Move> MoveList;
 
+// Test stuff
+
+//for (int i=0; i<PieceSquares.size(); i++){
+//    std::cout << PieceSquares[i] << std::endl;
+//};
+
 //MoveList=LegalMoves::GenerateMoves();
 //for (int i=0; i<MoveList.size(); i++){
 //    std::cout << Ind2Ref(MoveList[i].initial_square) << " " << Ind2Ref(MoveList[i].target_square) << std::endl;
 //};
 //std::cout << "Number of moves: " << MoveList.size() << std::endl;
 
-// Test stuff
 
 // Player input
 std::string White_Move, Black_Move;
@@ -906,11 +936,9 @@ std::string White_Move, Black_Move;
 // Program loop
 Print_Board();
 
+std::cout << "Moves are input as the starting square followed by the target square i.e. a4c3. Castling is done by moving the King to the castled square followed by a C i.e. e8g8C. Promotion moves include a fifth character at the end, Q, B, K, R, i.e a7a8Q." << std::endl;
 
-
-std::cout << "Moves are input as the starting square followed by the target square i.e. a4c3. Castling is done by moving the King to the catled square followed by a C i.e. e8g8C. Promotion moves include a fifth character at the end, Q, B, K, R, i.e a7a8Q." << std::endl;
-
-while (true){
+while (false){
     std::cout << "White player move: ";
     getline(std::cin, White_Move);
     MoveList=LegalMoves::GenerateMoves();

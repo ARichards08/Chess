@@ -22,6 +22,8 @@ List to do:
 Check states
 Do this by keeping track of squares that the enemy is attacking on a turn
 Also keep track of pinned pieces for discovered checks
-
+Keep track of all squares with a piece in an array/map
+Finish FEN string stuff, only geot the pieces in the right order, need to take in the castling info etc
+Need game history for three fold repetition rule
 
 Testing the move list

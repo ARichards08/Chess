@@ -200,6 +200,13 @@ namespace LegalMoves{
                 // Add square to array
                 SquaresAttacked.push_back(targetSq);
 
+                // If target square is the friendly King's square, add the previous squares to SquaresToBlock
+                if (targetSq==KingSquares[ColourToMove]){
+                    for (int i=0; i<=n; i++){
+                        SquaresToBlock.push_back(startSq+SlidingDirections[directionId]*(i));
+                    };
+                };
+
                 if (!Piece::IsFigure(targetPc, Piece::Figure::None)) break; // Stop looking in that direction if there is a piece of either colour there
             };
         };
@@ -224,6 +231,9 @@ namespace LegalMoves{
 
                         // Add square to array
                         SquaresAttacked.push_back(targetSq);
+
+                        // If the target square is the friendly King's square, add the knight square to SquaresToBlock, so that it can be taken to stop check
+                        if (targetSq==KingSquares[ColourToMove]) SquaresToBlock.push_back(startSq);
                     };
                 };
             };
@@ -249,6 +259,9 @@ namespace LegalMoves{
 
                 // Add square to array
                 SquaresAttacked.push_back(targetSq);
+
+                // If the target square is the friendly King's square, add the pawn square to SquaresToBlock, so that it can be taken to stop check
+                if (targetSq==KingSquares[ColourToMove]) SquaresToBlock.push_back(startSq);
 
                 // En Passant check
                 // Checking the possibility of En Passant breaking a pin line, 11.30 first vid
@@ -278,6 +291,9 @@ namespace LegalMoves{
     std::vector<int> SquaresUnderAttack(){
         std::vector<int> SquaresAttacked;
         int startSq;
+
+        // Clear the SquaresToBlock vector from previous moves
+        SquaresToBlock.clear();
 
         // Iterate over the PieceSquares array instead of the whole board
         for (int sq=0; sq<PieceSquares.size(); sq++){
@@ -320,7 +336,7 @@ namespace LegalMoves{
 
     // Function to generate the pseudo-legal sliding piece moves
     // use insert to add the sliding moves to the move list
-    std::vector<Move> GenerateSlidingMoves(int startSq, std::vector<Move>& SlidingMovesList){
+    std::vector<Move> GenerateSlidingMoves(int startSq, std::vector<Move>& SlidingMovesList, const bool& Check){
         int pc, targetSq, targetPc;
 
         pc=Board[startSq];
@@ -339,7 +355,10 @@ namespace LegalMoves{
 
                 if (Piece::IsColour(targetPc, ColourToMove)) break; // Break on reaching a square with friendly colour
 
-                SlidingMovesList.push_back(Move(startSq, targetSq));
+                // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                if (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock)){
+                    SlidingMovesList.push_back(Move(startSq, targetSq));
+                };
 
                 if (Piece::IsColour(targetPc, ColourEnemy)) break; // Stop looking in that direction after capturing an enemy piece
             };
@@ -349,7 +368,7 @@ namespace LegalMoves{
     };
 
     // Function to generate the pseudo-legal Knight moves
-    std::vector<Move> GenerateKnightMoves(int startSq, std::vector<Move>& KnightMovesList){
+    std::vector<Move> GenerateKnightMoves(int startSq, std::vector<Move>& KnightMovesList, const bool& Check){
         int targetSq, targetPc, temp1, temp2;
 
         // Look in the cardinal directions 1 square first and then diagonals 
@@ -369,7 +388,10 @@ namespace LegalMoves{
                         if (Piece::IsColour(targetPc, ColourToMove)){
                             continue;
                         } else{
-                            KnightMovesList.push_back(Move(startSq, targetSq));
+                            // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                            if (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock)){
+                                KnightMovesList.push_back(Move(startSq, targetSq));
+                            };
                         };
                     };
                 };
@@ -437,7 +459,7 @@ namespace LegalMoves{
 
     // Function to generate the pseudo-legal Pawn moves
     // No need to check for promotions on charging and en passant moves
-    std::vector<Move> GeneratePawnMoves(int startSq, std::vector<Move>& PawnMovesList){
+    std::vector<Move> GeneratePawnMoves(int startSq, std::vector<Move>& PawnMovesList, const bool& Check){
         std::vector<int> diagonals(2);
         int targetSq, targetPc;
 
@@ -449,7 +471,8 @@ namespace LegalMoves{
                 targetPc=Board[targetSq];
 
                 // Check the forward square is empty
-                if (Piece::IsFigure(targetPc, Piece::Figure::None)){
+                // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                if (Piece::IsFigure(targetPc, Piece::Figure::None) &&(!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
                     PromoteCheck(Move(startSq, targetSq), PawnMovesList);
                     PawnMovesList.push_back(Move(startSq, targetSq));
                 };
@@ -462,7 +485,8 @@ namespace LegalMoves{
                 targetPc=Board[targetSq];
 
                 // Check the forward square is empty
-                if (Piece::IsFigure(targetPc, Piece::Figure::None)){
+                // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                if (Piece::IsFigure(targetPc, Piece::Figure::None) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
                     PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::PawnCharge));
                 };
             };
@@ -476,7 +500,8 @@ namespace LegalMoves{
                     targetPc=Board[targetSq];
 
                     // Check that the piece in the diagonal square is an enemy piece
-                    if (Piece::IsColour(targetPc, ColourEnemy)){
+                    // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                    if (Piece::IsColour(targetPc, ColourEnemy) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
                         PromoteCheck(Move(startSq, targetSq), PawnMovesList);
                         PawnMovesList.push_back(Move(startSq, targetSq));
                     };
@@ -487,7 +512,10 @@ namespace LegalMoves{
                     // Have to check the board edges as well
                     if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
                         if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 1 && SquaresToEdge[startSq][7] > 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==0 && SquaresToEdge[startSq][4] > 0)){
-                            PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
+                            // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                            if (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock)){
+                                PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
+                            };
                         };
                     };
 
@@ -502,7 +530,8 @@ namespace LegalMoves{
                 targetPc=Board[targetSq];
                 
                 // Check the forward square is empty
-                if (Piece::IsFigure(targetPc, Piece::Figure::None)){
+                // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                if (Piece::IsFigure(targetPc, Piece::Figure::None) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
                     PromoteCheck(Move(startSq, targetSq), PawnMovesList);
                     PawnMovesList.push_back(Move(startSq, targetSq));
                 };
@@ -515,7 +544,8 @@ namespace LegalMoves{
                 targetPc=Board[targetSq];
 
                 // Check the forward square is empty
-                if (Piece::IsFigure(targetPc, Piece::Figure::None)){
+                // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                if (Piece::IsFigure(targetPc, Piece::Figure::None) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
                     PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::PawnCharge));
                 };
             };
@@ -529,8 +559,8 @@ namespace LegalMoves{
                     targetPc=Board[targetSq];
 
                     // Check that the piece in the diagonal square is an enemy piece
-                    if (Piece::IsColour(targetPc, ColourEnemy)){
-
+                    // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                    if (Piece::IsColour(targetPc, ColourEnemy) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
                         PromoteCheck(Move(startSq, targetSq), PawnMovesList);
                         PawnMovesList.push_back(Move(startSq, targetSq));
                     };
@@ -540,7 +570,10 @@ namespace LegalMoves{
                     // Can't promote on an en passant move so no check
                     if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
                         if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 0 && SquaresToEdge[startSq][5] > 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==1 && SquaresToEdge[startSq][6] > 0)){
-                            PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
+                            // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                             if (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock)){
+                                PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
+                             };
                         };
                     };
 
@@ -550,7 +583,6 @@ namespace LegalMoves{
 
         return PawnMovesList;
     };
-
 
     // Function to calculate the number of squares to generate a list of legal moves at each position
     // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
@@ -581,13 +613,13 @@ namespace LegalMoves{
                 // Only do other pieces if the player is not in double check
                 // Rook, Bishop or Queen
                 } else if (Piece::IsSlidingPiece(Board[startSq]) && !inDoubleCheck){
-                    GenerateSlidingMoves(startSq, MovesList);
+                    GenerateSlidingMoves(startSq, MovesList, inCheck);
                 // Knight
                 } else if (Piece::IsFigure(Board[startSq], Piece::Figure::Knight) && !inDoubleCheck){
-                    GenerateKnightMoves(startSq, MovesList);
+                    GenerateKnightMoves(startSq, MovesList, inCheck);
                 // Pawn
                 } else if (Piece::IsFigure(Board[startSq], Piece::Figure::Pawn) && !inDoubleCheck){
-                    GeneratePawnMoves(startSq, MovesList);
+                    GeneratePawnMoves(startSq, MovesList, inCheck);
                 // Empty
                 } else {
                     continue;
@@ -906,7 +938,6 @@ void Print_Board(){
     };
 };
 
-
 // Function to move a piece to a square, from a square index i.e. 40 -> 56
 void MakeMove(Move updateMove){
 
@@ -1128,7 +1159,7 @@ Print_Board();
 
 std::cout << "Moves are input as the starting square followed by the target square i.e. a4c3. Castling is done by moving the King to the castled square followed by a C i.e. e8g8C. Promotion moves include a fifth character at the end, Q, B, K, R, i.e a7a8Q." << std::endl;
 
-while (false){
+while (true){
 
     MoveList=LegalMoves::GenerateMoves();
 

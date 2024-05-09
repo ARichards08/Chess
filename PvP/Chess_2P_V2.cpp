@@ -151,6 +151,9 @@ namespace LegalMoves{
     // Array of two boolean constants, [0] for black and [1] for white, same as the colours. Set to true initially, if King or Rooks are moved its set to false
     std::vector<bool> CastleQueenside(2, true), CastleKingside(2, true);
 
+    // Array that will hold the square numbers that a piece is allowed to move to to block check from a sliding piece
+    std::vector<int> SquaresToBlock;
+
     // Static vector that contains the number of squares in 8 directions
     // Precomputing function will be called to set this up.
     std::vector<std::vector<int>> PrecomputingData(){
@@ -317,8 +320,7 @@ namespace LegalMoves{
 
     // Function to generate the pseudo-legal sliding piece moves
     // use insert to add the sliding moves to the move list
-    std::vector<Move> GenerateSlidingMoves(int startSq){
-        std::vector<Move> SlidingMovesList;
+    std::vector<Move> GenerateSlidingMoves(int startSq, std::vector<Move>& SlidingMovesList){
         int pc, targetSq, targetPc;
 
         pc=Board[startSq];
@@ -347,8 +349,7 @@ namespace LegalMoves{
     };
 
     // Function to generate the pseudo-legal Knight moves
-    std::vector<Move> GenerateKnightMoves(int startSq){
-        std::vector<Move> KnightMovesList;
+    std::vector<Move> GenerateKnightMoves(int startSq, std::vector<Move>& KnightMovesList){
         int targetSq, targetPc, temp1, temp2;
 
         // Look in the cardinal directions 1 square first and then diagonals 
@@ -380,8 +381,7 @@ namespace LegalMoves{
 
     // Function to generate the pseudo-legal King moves
     // Will include Castling
-    std::vector<Move> GenerateKingMoves(int startSq, const std::vector<int>& SquaresAttacked){
-        std::vector<Move> KingMovesList;
+    std::vector<Move> GenerateKingMoves(int startSq, std::vector<Move>& KingMovesList, const std::vector<int>& SquaresAttacked){
         int targetSq, targetPc;
 
         // Regular Moves
@@ -437,8 +437,7 @@ namespace LegalMoves{
 
     // Function to generate the pseudo-legal Pawn moves
     // No need to check for promotions on charging and en passant moves
-    std::vector<Move> GeneratePawnMoves(int startSq){
-        std::vector<Move> PawnMovesList;
+    std::vector<Move> GeneratePawnMoves(int startSq, std::vector<Move>& PawnMovesList){
         std::vector<int> diagonals(2);
         int targetSq, targetPc;
 
@@ -556,7 +555,7 @@ namespace LegalMoves{
     // Function to calculate the number of squares to generate a list of legal moves at each position
     // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
     std::vector<Move> GenerateMoves(){
-        std::vector<Move> MovesList, TempMoves;
+        std::vector<Move> MovesList;
         bool inCheck=false, inDoubleCheck=false;
         int startSq;
 
@@ -578,26 +577,17 @@ namespace LegalMoves{
                 // Check which type of piece it is
                 // King
                 if (Piece::IsFigure(Board[startSq], Piece::Figure::King)){
-                    TempMoves=GenerateKingMoves(startSq, SquaresAttacked);
-                    MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
-                    TempMoves.clear();
-
+                    GenerateKingMoves(startSq, MovesList, SquaresAttacked);
                 // Only do other pieces if the player is not in double check
                 // Rook, Bishop or Queen
                 } else if (Piece::IsSlidingPiece(Board[startSq]) && !inDoubleCheck){
-                    TempMoves=GenerateSlidingMoves(startSq);
-                    MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
-                    TempMoves.clear();
+                    GenerateSlidingMoves(startSq, MovesList);
                 // Knight
                 } else if (Piece::IsFigure(Board[startSq], Piece::Figure::Knight) && !inDoubleCheck){
-                    TempMoves=GenerateKnightMoves(startSq);
-                    MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
-                    TempMoves.clear();
+                    GenerateKnightMoves(startSq, MovesList);
                 // Pawn
                 } else if (Piece::IsFigure(Board[startSq], Piece::Figure::Pawn) && !inDoubleCheck){
-                    TempMoves=GeneratePawnMoves(startSq);
-                    MovesList.insert(MovesList.end(), TempMoves.begin(), TempMoves.end());
-                    TempMoves.clear();
+                    GeneratePawnMoves(startSq, MovesList);
                 // Empty
                 } else {
                     continue;

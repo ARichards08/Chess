@@ -774,47 +774,110 @@ namespace LegalMoves{
 
 // Functions
 
-// Function to return 2 letters as a piece instead of an int, makes the board more readable before graphics are implemented
+// Function to return a unicode charavter based on a square number. Unicode figures for all chess pieces and black and white squares
+// Annoyingly the colours are inverted if the terminal is set to dark mode. Will use a seperate function to print dark mode characters as the opposite colour
 std::string Reference(int Position){
-    switch (Position){
+    switch (Board[Position]){
     case Piece::White*6 + Piece::Pawn :
-        return "wp";
+        return "\u2659";
         break;
     case Piece::White*6 + Piece::Rook :
-        return "wr";
+        return "\u2656";
         break;
     case Piece::White*6 + Piece::Knight :
-        return "wn";
+            return "\u2658";
         break;
     case Piece::White*6 + Piece::Bishop :
-        return "wb";
+        return "\u2657";
         break;
     case Piece::White*6 + Piece::Queen :
-        return "wq";
+        return "\u2655";
         break;
     case Piece::White*6 + Piece::King :
-        return "wk";
+        return "\u2654";
         break;
     case Piece::Black*6 + Piece::Pawn :
-        return "bp";
+        return "\u265F";
         break;
     case Piece::Black*6 + Piece::Rook :
-        return "br";
+        return "\u265C";
         break;
     case Piece::Black*6 + Piece::Knight :
-        return "bn";
+        return "\u265E";
         break;
     case Piece::Black*6 + Piece::Bishop :
-        return "bb";
+        return "\u265D";
         break;
     case Piece::Black*6 + Piece::Queen :
-        return "bq";
+        return "\u265B";
         break;
     case Piece::Black*6 + Piece::King :
-        return "bk";
+        return "\u265A";
         break;
     default:
-        return "--";
+
+        int column=Position%8;
+        int row=(Position-column)/8;
+        if ((row+column)%2==0){
+            // Black Square
+            return "\u25A0";
+        } else {
+            // White Square
+            return "\u25A1";
+        };
+    };
+};
+
+std::string ReferenceDarkMode(int Position){
+    switch (Board[Position]){
+    case Piece::White*6 + Piece::Pawn :
+        return "\u265F";
+        break;
+    case Piece::White*6 + Piece::Rook :
+        return "\u265C";
+        break;
+    case Piece::White*6 + Piece::Knight :
+            return "\u265E";
+        break;
+    case Piece::White*6 + Piece::Bishop :
+        return "\u265D";
+        break;
+    case Piece::White*6 + Piece::Queen :
+        return "\u265B";
+        break;
+    case Piece::White*6 + Piece::King :
+        return "\u265A";
+        break;
+    case Piece::Black*6 + Piece::Pawn :
+        return "\u2659";
+        break;
+    case Piece::Black*6 + Piece::Rook :
+        return "\u2656";
+        break;
+    case Piece::Black*6 + Piece::Knight :
+        return "\u2658";
+        break;
+    case Piece::Black*6 + Piece::Bishop :
+        return "\u2657";
+        break;
+    case Piece::Black*6 + Piece::Queen :
+        return "\u2655";
+        break;
+    case Piece::Black*6 + Piece::King :
+        return "\u2654";
+        break;
+    default:
+
+        int column=Position%8;
+        int row=(Position-column)/8;
+        if ((row+column)%2==0){
+            // Black Square
+            return "\u25A1";
+        } else {
+            // White Square
+            return "\u25A0";
+        };
+
     };
 };
 
@@ -1058,20 +1121,34 @@ void ClearBoard(){
 };
 
 // Function to print the board
-void Print_Board(){
-    int k;
+void Print_Board(int Perspective=ColourToMove){
 
-    // Files
-    std::cout << "    a  b  c  d  e  f  g  h \n" << std::endl;
+    if (Perspective==Piece::Colour::White){
+        // Files
+        std::cout << "    a b c d e f g h " << std::endl;
 
-    for (int i=7; i>=0; i--){
-        // Numbers
-        std::cout << i+1 << "  ";
+        for (int i=7; i>=0; i--){
+            // Numbers
+            std::cout << i+1 << "  ";
 
-        for (int j=0; j<8; j++) {
-            std::cout << Reference(Board[i*8+j]) << " ";
+            for (int j=0; j<8; j++) {
+                std::cout << ReferenceDarkMode(i*8+j) << " ";
+            };
+            std::cout << std::endl;
         };
-        std::cout << std::endl;
+    } else {
+        // Files
+        std::cout << "    h g f e d c b a " << std::endl;
+    
+        for (int i=0; i<=7; i++){
+            // Numbers
+            std::cout << i+1 << "  ";
+
+            for (int j=7; j>=0; j--) {
+                std::cout << ReferenceDarkMode(i*8+j) << " ";
+            };
+            std::cout << std::endl;
+        };
     };
 };
 
@@ -1266,26 +1343,8 @@ std::vector<Move> MoveList;
 
 // Test stuff
 
-//for (int i=0; i<PieceSquares.size(); i++){
-//    std::cout << PieceSquares[i] << std::endl;
-//};
-
-//MoveList=LegalMoves::GenerateMoves();
-//for (int i=0; i<MoveList.size(); i++){
-//    std::cout << Ind2Ref(MoveList[i].initial_square) << " " << Ind2Ref(MoveList[i].target_square) << std::endl;
-//};
-//std::cout << "Number of moves: " << MoveList.size() << std::endl;
-
 //ClearBoard();
-
 //SetupBoard("r3k3/1p3p2/p2q2p1/bn3P2/1N2PQP1/PB6/3K1R1r/3R4 w q - 0 1");
-
-//std::vector<int> Attacked=LegalMoves::SquaresUnderAttack();
-
-//for (int i=0; i<Attacked.size(); i++){
-//    std::cout << Attacked[i] << std::endl;
-//};
-//std::cout << "Number of attacks: " << Attacked.size() << std::endl;
 
 
 // Player input
@@ -1296,7 +1355,7 @@ Print_Board();
 
 std::cout << "Moves are input as the starting square followed by the target square i.e. a4c3. Castling is done by moving the King to the castled square followed by a C i.e. e8g8C. Promotion moves include a fifth character at the end, Q, B, K, R, i.e a7a8Q." << std::endl;
 
-while (false){
+while (true){
 
     MoveList=LegalMoves::GenerateMoves();
 
@@ -1319,13 +1378,7 @@ while (false){
     getline(std::cin, playerMove);
 
     attemptedMove(playerMove, MoveList);
-    Print_Board();
+    Print_Board(Piece::Colour::White); // Print board from white's perspective, flips board each turn otherwise
 };
-
-//getline(std::cin, White_Move);
-
-//attempetedMove(White_Move);
-
-//Print_Board();
 
 }

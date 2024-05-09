@@ -8,7 +8,7 @@
 // Global Variables
 
 // Board
-std::vector<int> Board(64, 0), PieceSquares, KingSquares(2, 0);
+std::vector<int> Board(64, 0), PieceSquares;
 
 // Colour that is currently to move, can be updated by assigning Piece::Colour
 int ColourToMove=1, ColourEnemy=0;
@@ -153,6 +153,9 @@ namespace LegalMoves{
 
     // Array that will hold the square numbers that a piece is allowed to move to to block check from a sliding piece
     std::vector<int> SquaresToBlock;
+
+    // Vector to hold the squares the king occupys
+    static std::vector<int> KingSquares(2, 0);
 
     // Static vector that contains the number of squares in 8 directions
     // Precomputing function will be called to set this up.
@@ -329,17 +332,106 @@ namespace LegalMoves{
         return SquaresAttacked;
     };
 
-    // Function to calculate a vector of current squares that lie along a pinned ray
-    std::vector<int> PinnedSquares(const std::vector<int>& SquaresAttacked){
+    // Function to calculate a 2d vector, that contains the squares in each pinned ray on the board for the friendly colour
+    std::vector<std::vector<int>> CalculatePinnedRays(const std::vector<int>& SquaresAttacked){
+        std::vector<std::vector<int>> PinnedRays;
+        std::vector<int> PinnedRay;
+        int startSq=KingSquares[ColourToMove], targetSq, targetPc;
+        bool foundPinned;
+        Piece::Figure bishopOrRook;
+
+        // Iterate over every direction from the king, and check if there is an enemy sliding piece there
+        for (int directionId=0; directionId<8; directionId++){
+            foundPinned=false;
+
+            // Define this loop as a lambda expression so that it can easily be broken out of by returning
+            [&](){
+
+                for (int n=0; n<SquaresToEdge[startSq][directionId]; n++){
+                    targetSq=startSq+SlidingDirections[directionId]*(n+1);
+                    targetPc=Board[targetSq];
+
+                    if (directionId<4){
+                        bishopOrRook=Piece::Figure::Rook;
+                    } else{
+                        bishopOrRook=Piece::Figure::Bishop;
+                    };
+
+
+                    // If the target square piece is the enemy colour and can move along the ray
+                    if (Piece::IsColour(targetPc, ColourEnemy) && (Piece::IsFigure(targetPc, Piece::Queen) || (Piece::IsFigure(targetPc, bishopOrRook)))){
+                        
+                        // Check that there is only a single friendly piece between the king and the attacking piece, also no enemy pieces
+                        for (int i=1; i<n; i++){
+                            targetSq=startSq+SlidingDirections[directionId]*(i);
+                            targetPc=Board[targetSq];
+
+                            // return if there is an enemy piece between the attacking piece and the king, to stop looking in this direction
+                            if (Piece::IsColour(targetPc, ColourEnemy)) return;
+
+                            // return if there are multiple friendly pieces in the space between the attacking piece and the friendly king
+                            if (Piece::IsColour(targetPc, ColourToMove)){
+                                if (foundPinned){
+                                    return;
+                                } else {
+                                    foundPinned=true;
+                                };
+                            };
+                        };
+
+                        // If the code didn't return and foundPinned is true, there is only 1 friendly piece in the pin ray, so the ray is valid
+                        for (int i=0; i<n; i++){
+                            PinnedRay.push_back(startSq+SlidingDirections[directionId]*(i+1));
+                        };
+
+                        PinnedRays.push_back(PinnedRay);
+                        PinnedRay.clear();
+                    };
+                };
+
+            };
+        };
+
+        return PinnedRays;
+    };
+
+    // Function to return an iterator to the ray that a square is pinned in. If the square isn't pinned, it returns the end iterator of the PinnedRays vector
+    std::vector<std::vector<int>>::iterator PinnedRayIt(const int& sq, std::vector<std::vector<int>>& PinnedRays){
+
+        for (std::vector<std::vector<int>>::iterator it=std::begin(PinnedRays); it!=std::end(PinnedRays); ++it){
+            auto foundPin=std::find(std::begin(*it), std::end(*it), sq);
+            if (foundPin != std::end(*it)) return it;
+        };
+
+        return std::end(PinnedRays);
+    };
+
+    // Function to calculate if a pinned sliding piece is moving along the pinned ray
+    // Note that dir = 0-7, the indices of SlidingDirections
+    bool IsMovingAlongPinnedRay(const int& dir, const int& startSq){
         
+        int actualDir=startSq-KingSquares[ColourToMove];
+
+        if (actualDir % 9==0){
+            actualDir=9;
+        } else if(actualDir % 8==0){
+            actualDir=8;
+        } else if(actualDir % 7==0){
+            actualDir=7;
+        } else if(actualDir % 1==0){
+            actualDir=1;
+        };
+
+        return (actualDir==SlidingDirections[dir] || actualDir==-SlidingDirections[dir]);
     };
 
     // Function to generate the pseudo-legal sliding piece moves
     // use insert to add the sliding moves to the move list
-    std::vector<Move> GenerateSlidingMoves(int startSq, std::vector<Move>& SlidingMovesList, const bool& Check){
-        int pc, targetSq, targetPc;
+    void GenerateSlidingMoves(int startSq, std::vector<Move>& SlidingMovesList, const bool& Check, std::vector<std::vector<int>>& PinnedRays){
+        int pc=Board[startSq], targetSq, targetPc;
 
-        pc=Board[startSq];
+        // If piece is pinned and the king is in check, piece cannot move
+        if (Check && PinnedRayIt(startSq, PinnedRays) != std::end(PinnedRays)) return;
 
         // Start and End direction indices for rooks and bishops, queens search all 8 directions
 
@@ -350,26 +442,35 @@ namespace LegalMoves{
         for (int directionId=startDirIndex; directionId<endDirIndex; directionId++){
             for (int n=0; n<SquaresToEdge[startSq][directionId]; n++){
 
+                // If the piece is pinned, ignore directions that aren't along the pinned ray
+                if (PinnedRayIt(startSq, PinnedRays) != std::end(PinnedRays) && !IsMovingAlongPinnedRay(directionId, startSq)){
+                    continue;
+                };
+
                 targetSq=startSq+SlidingDirections[directionId]*(n+1);
                 targetPc=Board[targetSq];
 
                 if (Piece::IsColour(targetPc, ColourToMove)) break; // Break on reaching a square with friendly colour
 
                 // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
-                if (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock)){
+                bool movePreventsCheck=std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock);
+                if (!Check || movePreventsCheck){
                     SlidingMovesList.push_back(Move(startSq, targetSq));
                 };
 
-                if (Piece::IsColour(targetPc, ColourEnemy)) break; // Stop looking in that direction after capturing an enemy piece
+                // Stop looking in that direction after capturing an enemy piece
+                // If the current move prevents check, subsequent moves won't
+                if (Piece::IsColour(targetPc, ColourEnemy) || movePreventsCheck) break; 
             };
         };
-
-        return SlidingMovesList;
     };
 
     // Function to generate the pseudo-legal Knight moves
-    std::vector<Move> GenerateKnightMoves(int startSq, std::vector<Move>& KnightMovesList, const bool& Check){
+    void GenerateKnightMoves(int startSq, std::vector<Move>& KnightMovesList, const bool& Check, std::vector<std::vector<int>>& PinnedRays){
         int targetSq, targetPc, temp1, temp2;
+
+        // Knight can't move if it is pinned
+        if (PinnedRayIt(startSq, PinnedRays) != std::end(PinnedRays)) return;
 
         // Look in the cardinal directions 1 square first and then diagonals 
         for (int directionId=0; directionId<4; directionId++){
@@ -397,13 +498,11 @@ namespace LegalMoves{
                 };
             };
         };
-        
-        return KnightMovesList;
     };
 
     // Function to generate the pseudo-legal King moves
     // Will include Castling
-    std::vector<Move> GenerateKingMoves(int startSq, std::vector<Move>& KingMovesList, const std::vector<int>& SquaresAttacked){
+    void GenerateKingMoves(int startSq, std::vector<Move>& KingMovesList, const std::vector<int>& SquaresAttacked){
         int targetSq, targetPc;
 
         // Regular Moves
@@ -441,47 +540,128 @@ namespace LegalMoves{
                 if (std::find(std::begin(SquaresAttacked), std::end(SquaresAttacked), startSq+2) == std::end(SquaresAttacked)) KingMovesList.push_back(Move(startSq, startSq+2, Move::MFlag::Castling));
             };
         };
-
-        return KingMovesList;
     };
 
     // Function to check if a pawn's move will allow it to promote, and adds possible moves to the PawnMovesList
-    void PromoteCheck(Move PawnMove, std::vector<Move>& List){
-        // Check for Pawn promotion
-        if (PawnMove.target_square > 55 || PawnMove.target_square < 8){
-            // If a pawn is moving the the first or last rows, add the move with each of the promotion flags
-            List.push_back(Move(PawnMove, Move::MFlag::PromoteRook));
-            List.push_back(Move(PawnMove, Move::MFlag::PromoteKnight));
-            List.push_back(Move(PawnMove, Move::MFlag::PromoteBishop));
-            List.push_back(Move(PawnMove, Move::MFlag::PromoteQueen));
+    void PromotionMoves(Move PawnMove, std::vector<Move>& List){
+        // If a pawn is moving the the first or last rows, add the move with each of the promotion flags
+        List.push_back(Move(PawnMove, Move::MFlag::PromoteRook));
+        List.push_back(Move(PawnMove, Move::MFlag::PromoteKnight));
+        List.push_back(Move(PawnMove, Move::MFlag::PromoteBishop));
+        List.push_back(Move(PawnMove, Move::MFlag::PromoteQueen));
+    };
+
+    // Function to check if an En Passant move will reveal a check, by looking from the king in all directions
+    bool InCheckAfterEP(const int & startSq, const int& epTargetSq){
+        int targetSq, targetPc;
+        Piece::Figure bishopOrRook;
+        bool inCheck=false;
+
+        // Make move
+        Piece::Remove(startSq);
+        Piece::Add(epTargetSq, ColourToMove, Piece::Figure::Pawn);
+
+        if (ColourToMove==Piece::Colour::White){
+            Piece::Remove(epTargetSq-8);
+        } else{
+            Piece::Remove(epTargetSq+8);
         };
+
+        // See if King is in check
+
+        // Iterate over every direction from the king, and check if there is an enemy sliding piece there
+        for (int directionId=0; directionId<8; directionId++){
+
+            // Define this loop as a lambda expression so that it can easily be broken out of by returning
+            [&](){
+
+                for (int n=0; n<SquaresToEdge[KingSquares[ColourToMove]][directionId]; n++){
+                    targetSq=KingSquares[ColourToMove]+SlidingDirections[directionId]*(n+1);
+                    targetPc=Board[targetSq];
+
+                    if (directionId<4){
+                        bishopOrRook=Piece::Figure::Rook;
+                    } else{
+                        bishopOrRook=Piece::Figure::Bishop;
+                    };
+
+
+                    // If the target square piece is the enemy colour and can move along the ray, inCheck=true and exit loop
+                    if (Piece::IsColour(targetPc, ColourEnemy) && (Piece::IsFigure(targetPc, Piece::Queen) || (Piece::IsFigure(targetPc, bishopOrRook)))){
+                        inCheck=true;
+                        return;
+                    // If the target square has any piece other than an attacking sliding piece, the king cannot be attacked from this direction, so skip to the next
+                    } else if (!Piece::IsFigure(targetPc, Piece::Figure::None)){
+                        return;
+                    };
+                };
+
+            };
+
+            // If the King is in check after EP, exit loop early
+            if (inCheck) break;
+        };
+
+        // Unmake move and return inCheck
+
+        Piece::Add(startSq, ColourToMove, Piece::Figure::Pawn);
+        Piece::Remove(epTargetSq);
+        
+        if (ColourToMove==Piece::Colour::White){
+            Piece::Add(epTargetSq-8, ColourEnemy, Piece::Figure::Pawn);
+        } else{
+            Piece::Add(epTargetSq+8, ColourEnemy, Piece::Figure::Pawn);
+        };
+
+        return inCheck;
+
     };
 
     // Function to generate the pseudo-legal Pawn moves
     // No need to check for promotions on charging and en passant moves
-    std::vector<Move> GeneratePawnMoves(int startSq, std::vector<Move>& PawnMovesList, const bool& Check){
-        std::vector<int> diagonals(2);
-        int targetSq, targetPc;
+    void GeneratePawnMoves(int startSq, std::vector<Move>& PawnMovesList, const bool& Check, std::vector<std::vector<int>>& PinnedRays){
+        int targetSq, targetPc, forwardIt, diagonalIt, pawnRowStart, pawnRowEnd;
+
+        // Promote if pawn is in either in the tope or bottom row
+        bool nextStepPromote = startSq>55 || startSq<8;
 
         // Only move N, NE or NW when the player colour is white
         if (ColourToMove==Piece::Colour::White){
+            forwardIt=0;
+            diagonalIt=0;
+            pawnRowStart=8;
+            pawnRowEnd=15;
+        // Only move S, SE or SW when the player colour is white
+        } else {
+            forwardIt=1;
+            diagonalIt=1;
+            pawnRowStart=48;
+            pawnRowEnd=55;
+        };
+
+        // Only consider forward moves if pawn isn't pinned or if is moving along the pinned ray
+        if (PinnedRayIt(startSq, PinnedRays) == std::end(PinnedRays) || IsMovingAlongPinnedRay(forwardIt, startSq)){
+
             // Forward
-            if (SquaresToEdge[startSq][0] > 0){
-                targetSq=startSq+SlidingDirections[0];
+            if (SquaresToEdge[startSq][forwardIt] > 0){
+                targetSq=startSq+SlidingDirections[forwardIt];
                 targetPc=Board[targetSq];
 
                 // Check the forward square is empty
                 // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
                 if (Piece::IsFigure(targetPc, Piece::Figure::None) &&(!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
-                    PromoteCheck(Move(startSq, targetSq), PawnMovesList);
-                    PawnMovesList.push_back(Move(startSq, targetSq));
+                    if (nextStepPromote){
+                        PromotionMoves(Move(startSq, targetSq), PawnMovesList);
+                    } else {
+                        PawnMovesList.push_back(Move(startSq, targetSq));
+                    };
                 };
             };
 
             // Charging
             // Check if the pawn is in the second row from it's side, if so allow it to charge
-            if (startSq > 7 && startSq < 16){
-                targetSq=startSq+SlidingDirections[0]*2;
+            if (startSq >= pawnRowStart && startSq <= pawnRowEnd){
+                targetSq=startSq+SlidingDirections[forwardIt]*2;
                 targetPc=Board[targetSq];
 
                 // Check the forward square is empty
@@ -491,98 +671,52 @@ namespace LegalMoves{
                 };
             };
 
-            // Attacking
-            diagonals={4, 7}; // NE and NW
+        };
 
-            for (int i=0; i<2; i++){
-                if (SquaresToEdge[startSq][diagonals[i]] > 0){
-                    targetSq=startSq+SlidingDirections[diagonals[i]];
-                    targetPc=Board[targetSq];
-
-                    // Check that the piece in the diagonal square is an enemy piece
-                    // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
-                    if (Piece::IsColour(targetPc, ColourEnemy) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
-                        PromoteCheck(Move(startSq, targetSq), PawnMovesList);
-                        PawnMovesList.push_back(Move(startSq, targetSq));
-                    };
-
-                    // En Passant check
-                    // Check if the last enemy move was a pawn charge to a square on either side of the current pawn
-                    // Can't promote on an en passant move so no check
-                    // Have to check the board edges as well
-                    if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
-                        if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 1 && SquaresToEdge[startSq][7] > 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==0 && SquaresToEdge[startSq][4] > 0)){
-                            // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
-                            if (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock)){
-                                PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
-                            };
-                        };
-                    };
-
-                };
-            };
-
-        // Only move S, SE or SW when the player colour is black
-        } else{
-            // Forward
-            if (SquaresToEdge[startSq][1] > 0){
-                targetSq=startSq+SlidingDirections[1];
-                targetPc=Board[targetSq];
-                
-                // Check the forward square is empty
-                // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
-                if (Piece::IsFigure(targetPc, Piece::Figure::None) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
-                    PromoteCheck(Move(startSq, targetSq), PawnMovesList);
-                    PawnMovesList.push_back(Move(startSq, targetSq));
-                };
-            };
-
-            // Charging
-            // Check if the pawn is in the second row from it's side, if so allow it to charge
-            if (startSq > 47 && startSq < 56){
-                targetSq=startSq+SlidingDirections[1]*2;
+        // Attacking
+        for (int i=0; i<2; i++){
+            if (SquaresToEdge[startSq][diagonals[diagonalIt][i]] > 0){
+                targetSq=startSq+SlidingDirections[diagonals[diagonalIt][i]];
                 targetPc=Board[targetSq];
 
-                // Check the forward square is empty
-                // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
-                if (Piece::IsFigure(targetPc, Piece::Figure::None) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
-                    PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::PawnCharge));
+                // Skip attacking direction if pawn is pinned and direction is not in the pinned ray
+                if (PinnedRayIt(startSq, PinnedRays) != std::end(PinnedRays) && !IsMovingAlongPinnedRay(diagonals[diagonalIt][i], startSq)){
+                    continue;
                 };
-            };
 
-            // Attacking
-            diagonals={5, 6}; // SW and SE
-
-            for (int i=0; i<2; i++){
-                if (SquaresToEdge[startSq][diagonals[i]] > 0){
-                    targetSq=startSq+SlidingDirections[diagonals[i]];
-                    targetPc=Board[targetSq];
-
-                    // Check that the piece in the diagonal square is an enemy piece
-                    // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
-                    if (Piece::IsColour(targetPc, ColourEnemy) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
-                        PromoteCheck(Move(startSq, targetSq), PawnMovesList);
+                // Check that the piece in the diagonal square is an enemy piece
+                // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                if (Piece::IsColour(targetPc, ColourEnemy) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
+                    if (nextStepPromote){
+                        PromotionMoves(Move(startSq, targetSq), PawnMovesList);
+                    } else {
                         PawnMovesList.push_back(Move(startSq, targetSq));
                     };
+                };
 
-                    // En Passant check
-                    // Check if the last enemy move was a pawn charge to a square on either side of the current pawn 
-                    // Can't promote on an en passant move so no check
-                    if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
-                        if ((lastMoves[ColourEnemy].target_square == startSq-1 && i == 0 && SquaresToEdge[startSq][5] > 0) || (lastMoves[ColourEnemy].target_square == startSq+1 && i==1 && SquaresToEdge[startSq][6] > 0)){
-                            // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
-                             if (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock)){
-                                PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
-                             };
+                // En Passant check
+                // Check if the last enemy move was a pawn charge to a square on either side of the current pawn
+                // Can't promote on an en passant move so no promotion check
+                if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
+
+                    // Check for accidential edge wraparound 
+                    if (SquaresToEdge[startSq][diagonals[diagonalIt][i]] > 0 && (
+
+                        // If the enemy pawn moved to the east square, check the attacking diagonal is either NW or SW
+                        (lastMoves[ColourEnemy].target_square == startSq-1 && (diagonals[diagonalIt][i]==5 || diagonals[diagonalIt][i]==7)) ||
+                        // If the enemy pawn moved to the east square, check the attacking diagonal is either NE or SE
+                        (lastMoves[ColourEnemy].target_square == startSq+1 && (diagonals[diagonalIt][i]==4 || diagonals[diagonalIt][i]==6))
+
+                    )){
+                        // Only add to the move vector if the king won't be in check after the move. Deals with edge case in first video
+                        if (!InCheckAfterEP(startSq, targetSq)){
+                            PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
                         };
                     };
-
                 };
             };
         };
-
-        return PawnMovesList;
-    };
+    };        
 
     // Function to calculate the number of squares to generate a list of legal moves at each position
     // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
@@ -593,6 +727,9 @@ namespace LegalMoves{
 
         // Generate a map of which squares are currently under attack by the enemy
         std::vector<int> SquaresAttacked=SquaresUnderAttack();
+
+        // Generate a 2d vector of pinned squares from the attack information
+        std::vector<std::vector<int>> PinnedRays=CalculatePinnedRays(SquaresAttacked);
 
         // Is the current player in check or double check
         auto check_it=std::find(std::begin(SquaresAttacked), std::end(SquaresAttacked), KingSquares[ColourToMove]);
@@ -613,13 +750,13 @@ namespace LegalMoves{
                 // Only do other pieces if the player is not in double check
                 // Rook, Bishop or Queen
                 } else if (Piece::IsSlidingPiece(Board[startSq]) && !inDoubleCheck){
-                    GenerateSlidingMoves(startSq, MovesList, inCheck);
+                    GenerateSlidingMoves(startSq, MovesList, inCheck, PinnedRays);
                 // Knight
                 } else if (Piece::IsFigure(Board[startSq], Piece::Figure::Knight) && !inDoubleCheck){
-                    GenerateKnightMoves(startSq, MovesList, inCheck);
+                    GenerateKnightMoves(startSq, MovesList, inCheck, PinnedRays);
                 // Pawn
                 } else if (Piece::IsFigure(Board[startSq], Piece::Figure::Pawn) && !inDoubleCheck){
-                    GeneratePawnMoves(startSq, MovesList, inCheck);
+                    GeneratePawnMoves(startSq, MovesList, inCheck, PinnedRays);
                 // Empty
                 } else {
                     continue;
@@ -908,8 +1045,8 @@ void SetupBoard(std::string FENstring="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB
     };
 
     // Update KingSquares
-    KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
-    KingSquares[ColourEnemy]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourEnemy));});;
+    LegalMoves::KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
+    LegalMoves::KingSquares[ColourEnemy]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourEnemy));});;
 
 };
 
@@ -1035,7 +1172,7 @@ void MakeMove(Move updateMove){
     };
 
     // Update KingSquare array if the initial square was the king square
-    if (updateMove.initial_square == KingSquares[ColourToMove]) KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
+    if (updateMove.initial_square == LegalMoves::KingSquares[ColourToMove]) LegalMoves::KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
 
 
     // Finally, swap ColourToMove and EnemyColour
@@ -1159,7 +1296,7 @@ Print_Board();
 
 std::cout << "Moves are input as the starting square followed by the target square i.e. a4c3. Castling is done by moving the King to the castled square followed by a C i.e. e8g8C. Promotion moves include a fifth character at the end, Q, B, K, R, i.e a7a8Q." << std::endl;
 
-while (true){
+while (false){
 
     MoveList=LegalMoves::GenerateMoves();
 

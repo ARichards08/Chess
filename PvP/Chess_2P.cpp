@@ -51,11 +51,6 @@ public:
 
 };
 
-// Array of the last move of each side, updated after each move
-// Only needed for En Passant, but could display it for players as well
-std::vector<Move> lastMoves(2);
-
-
 // Namespaces
 
 namespace Piece{
@@ -156,6 +151,10 @@ namespace LegalMoves{
 
     // Vector to hold the squares the king occupys
     static std::vector<int> KingSquares(2, 0);
+
+    // Array of the last move of each side, updated after each move
+    // Only needed for En Passant, but could display it for players as well
+    std::vector<Move> lastMoves(2);
 
     // Static vector that contains the number of squares in 8 directions
     // Precomputing function will be called to set this up.
@@ -502,7 +501,7 @@ namespace LegalMoves{
 
     // Function to generate the pseudo-legal King moves
     // Will include Castling
-    void GenerateKingMoves(int startSq, std::vector<Move>& KingMovesList, const std::vector<int>& SquaresAttacked){
+    void GenerateKingMoves(int startSq, std::vector<Move>& KingMovesList, const bool& inCheck, const std::vector<int>& SquaresAttacked){
         int targetSq, targetPc;
 
         // Regular Moves
@@ -524,20 +523,23 @@ namespace LegalMoves{
 
         // Castling, only saves the king move
 
-        // If neither King nor left Rook has moved
-        if (CastleQueenside[ColourToMove]==true){
-            // If the three squares between the left Rook and the King are empty, and the Rook square does have a rook, add the move
-            if (Piece::IsFigure(Board[startSq-1], Piece::Figure::None) && Piece::IsFigure(Board[startSq-2], Piece::Figure::None) && Piece::IsFigure(Board[startSq-3], Piece::Figure::None) && Piece::IsFigure(Board[startSq-4], Piece::Figure::Rook)){
-                // Add King move if the target square is not under attack
-                if (std::find(std::begin(SquaresAttacked), std::end(SquaresAttacked), startSq-3) == std::end(SquaresAttacked)) KingMovesList.push_back(Move(startSq, startSq-3, Move::MFlag::Castling));
+        // Can't castle out of check
+        if (!inCheck){
+            // If neither King nor left Rook has moved
+            if (CastleQueenside[ColourToMove]==true){
+                // If the three squares between the left Rook and the King are empty, and the Rook square does have a rook, add the move
+                if (Piece::IsFigure(Board[startSq-1], Piece::Figure::None) && Piece::IsFigure(Board[startSq-2], Piece::Figure::None) && Piece::IsFigure(Board[startSq-3], Piece::Figure::None) && Piece::IsFigure(Board[startSq-4], Piece::Figure::Rook)){
+                    // Add King move if the target square is not under attack
+                    if (std::find(std::begin(SquaresAttacked), std::end(SquaresAttacked), startSq-3) == std::end(SquaresAttacked)) KingMovesList.push_back(Move(startSq, startSq-3, Move::MFlag::Castling));
+                };
             };
-        };
-        // Same again but for right
-        if (CastleKingside[ColourToMove]==true){
-            // If the two squares between the right Rook and the King are empty, and the Rook square does have a rook, add the move
-            if (Piece::IsFigure(Board[startSq+1], Piece::Figure::None) && Piece::IsFigure(Board[startSq+2], Piece::Figure::None) && Piece::IsFigure(Board[startSq+3], Piece::Figure::Rook)){
-                // Add King move
-                if (std::find(std::begin(SquaresAttacked), std::end(SquaresAttacked), startSq+2) == std::end(SquaresAttacked)) KingMovesList.push_back(Move(startSq, startSq+2, Move::MFlag::Castling));
+            // Same again but for right
+            if (CastleKingside[ColourToMove]==true){
+                // If the two squares between the right Rook and the King are empty, and the Rook square does have a rook, add the move
+                if (Piece::IsFigure(Board[startSq+1], Piece::Figure::None) && Piece::IsFigure(Board[startSq+2], Piece::Figure::None) && Piece::IsFigure(Board[startSq+3], Piece::Figure::Rook)){
+                    // Add King move if the target square is not under attack
+                    if (std::find(std::begin(SquaresAttacked), std::end(SquaresAttacked), startSq+2) == std::end(SquaresAttacked)) KingMovesList.push_back(Move(startSq, startSq+2, Move::MFlag::Castling));
+                };
             };
         };
     };
@@ -574,7 +576,6 @@ namespace LegalMoves{
 
             // Define this loop as a lambda expression so that it can easily be broken out of by returning
             [&](){
-
                 for (int n=0; n<SquaresToEdge[KingSquares[ColourToMove]][directionId]; n++){
                     targetSq=KingSquares[ColourToMove]+SlidingDirections[directionId]*(n+1);
                     targetPc=Board[targetSq];
@@ -595,7 +596,6 @@ namespace LegalMoves{
                         return;
                     };
                 };
-
             };
 
             // If the King is in check after EP, exit loop early
@@ -719,7 +719,7 @@ namespace LegalMoves{
     };        
 
     // Function to calculate the number of squares to generate a list of legal moves at each position
-    // Need to keep track of pinned pieces and discovered checks within smaller vectors, which are then used to generate the legal move list for the current player
+    // Also handles the checkmate and draw checks if there are no legal moves
     std::vector<Move> GenerateMoves(){
         std::vector<Move> MovesList;
         bool inCheck=false, inDoubleCheck=false;
@@ -746,7 +746,7 @@ namespace LegalMoves{
                 // Check which type of piece it is
                 // King
                 if (Piece::IsFigure(Board[startSq], Piece::Figure::King)){
-                    GenerateKingMoves(startSq, MovesList, SquaresAttacked);
+                    GenerateKingMoves(startSq, MovesList, inCheck, SquaresAttacked);
                 // Only do other pieces if the player is not in double check
                 // Rook, Bishop or Queen
                 } else if (Piece::IsSlidingPiece(Board[startSq]) && !inDoubleCheck){
@@ -761,6 +761,17 @@ namespace LegalMoves{
                 } else {
                     continue;
                 };
+            };
+        };
+
+        // Checkmate and Draws
+        if (MovesList.size() == 0){
+            if (ColourEnemy==Piece::Colour::White && inCheck){
+                std::cout << "Checkmate. White emerges victorious";
+            } else if (ColourEnemy==Piece::Colour::Black && inCheck) {
+                std::cout << "Checkmate. Black emerges victorious";
+            } else{
+                std::cout << "Draw, current player has no legal moves but is not in check.";
             };
         };
 
@@ -1104,7 +1115,7 @@ void SetupBoard(std::string FENstring="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB
             initialSq=finalSq+16;
         };
 
-        lastMoves[ColourEnemy]=Move(initialSq, finalSq, Move::MFlag::PawnCharge);
+        LegalMoves::lastMoves[ColourEnemy]=Move(initialSq, finalSq, Move::MFlag::PawnCharge);
     };
 
     // Update KingSquares
@@ -1225,7 +1236,7 @@ void MakeMove(Move updateMove){
     
 
     // Update the lastMoves array
-    lastMoves[ColourToMove]=updateMove;
+    LegalMoves::lastMoves[ColourToMove]=updateMove;
 
 
     // Castling checks after possible castling moves
@@ -1359,17 +1370,10 @@ while (true){
 
     MoveList=LegalMoves::GenerateMoves();
 
-    // Checkmate check
-    if (MoveList.size() == 0){
-        if (ColourEnemy==Piece::Colour::White){
-            std::cout << "Checkmate. White emerges victorious";
-            break;
-        } else {
-            std::cout << "Checkmate. Black emerges victorious";
-            break;
-        };
-    };
+    // If MoveList is empty, quit program, checkmates and draws are handled in the movelist creation
+    if (MoveList.empty()) break;
 
+    // Get a move from the player
     if (ColourToMove==Piece::Colour::White){
         std::cout << "White player move: ";
     } else {
@@ -1378,7 +1382,7 @@ while (true){
     getline(std::cin, playerMove);
 
     attemptedMove(playerMove, MoveList);
-    Print_Board(Piece::Colour::White); // Print board from white's perspective, flips board each turn otherwise
+    Print_Board(Piece::Colour::White); // Print board from white's perspective, flips board each turn by default
 };
 
 }

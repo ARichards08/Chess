@@ -1,0 +1,15 @@
+# ninja log v5
+8	707	7267809963095349	Chess_2P_Visualisation_autogen/timestamp	2c0cb0849a8cc6a2
+8	707	7267809963095349	Chess_2P_Visualisation_autogen/mocs_compilation.cpp	2c0cb0849a8cc6a2
+8	707	7267809963095349	C:/Users/alexa/Documents/Coding/Chess/PvP/build-Chess_2P_Visualisation-Desktop_Qt_6_6_1_MinGW_64_bit-Debug/Chess_2P_Visualisation_autogen/timestamp	2c0cb0849a8cc6a2
+8	707	7267809963095349	C:/Users/alexa/Documents/Coding/Chess/PvP/build-Chess_2P_Visualisation-Desktop_Qt_6_6_1_MinGW_64_bit-Debug/Chess_2P_Visualisation_autogen/mocs_compilation.cpp	2c0cb0849a8cc6a2
+707	2875	7267809985430329	CMakeFiles/Chess_2P_Visualisation.dir/Chess_2P_Visualisation_autogen/mocs_compilation.cpp.obj	64fa6e23e4a279c2
+710	3005	7267809986729898	CMakeFiles/Chess_2P_Visualisation.dir/main.cpp.obj	3c41399d4f74b3d1
+713	3072	7267809987400271	CMakeFiles/Chess_2P_Visualisation.dir/mainwindow.cpp.obj	611adddfa99e51ef
+3072	3290	7267809989489902	Chess_2P_Visualisation.exe	1ee8201b95c21a33
+33	200	7267817284180144	Chess_2P_Visualisation_autogen/timestamp	2c0cb0849a8cc6a2
+33	200	7267817284180144	Chess_2P_Visualisation_autogen/mocs_compilation.cpp	2c0cb0849a8cc6a2
+33	200	7267817284180144	C:/Users/alexa/Documents/Coding/Chess/PvP/build-Chess_2P_Visualisation-Desktop_Qt_6_6_1_MinGW_64_bit-Debug/Chess_2P_Visualisation_autogen/timestamp	2c0cb0849a8cc6a2
+33	200	7267817284180144	C:/Users/alexa/Documents/Coding/Chess/PvP/build-Chess_2P_Visualisation-Desktop_Qt_6_6_1_MinGW_64_bit-Debug/Chess_2P_Visualisation_autogen/mocs_compilation.cpp	2c0cb0849a8cc6a2
+215	2156	7267817303734279	CMakeFiles/Chess_2P_Visualisation.dir/mainwindow.cpp.obj	611adddfa99e51ef
+2156	2359	7267817305708546	Chess_2P_Visualisation.exe	1ee8201b95c21a33

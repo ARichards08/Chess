@@ -20,12 +20,6 @@ namespace LegalMoves{
     // Vector of squares that can be moved to to block a check
     std::vector<int> SquaresToBlock;
 
-    // Vector of two boolean constants, [0] for black and [1] for white, same as the colours. Set to true initially, if King or Rooks are moved its set to false
-    std::vector<bool> CastleQueenside(2, true), CastleKingside(2, true);
-
-    // Vector to hold the squares the king occupys
-    std::vector<int> KingSquares(2, 0);
-
     // Static vector that contains the number of squares in 8 directions
     // Precomputing function will be called to set this up.
     std::vector<std::vector<int>> PrecomputingData(){

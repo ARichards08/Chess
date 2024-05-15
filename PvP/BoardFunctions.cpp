@@ -5,6 +5,7 @@
 #include <iostream>
 #include <map>
 #include <algorithm>
+
 #include "Chess2P.h"
 #include "Piece.h"
 #include "Move.h"
@@ -236,7 +237,6 @@ std::string Ind2Ref(int Ind){
     return letter+std::to_string(Ind/8 + 1);
 };
 
-
 // Function for setting up the board from a FEN string, default argument is the initial board position. Doesn't take the Halfmove clock and Fullmove number information
 void SetupBoard(std::string FENstring){
     char piece;
@@ -309,19 +309,19 @@ void SetupBoard(std::string FENstring){
     // Castles avaliable
     it=FENinfo.find(' ');
 
-    LegalMoves::CastleKingside.assign(2, false), LegalMoves::CastleQueenside.assign(2, false);
+    CastleKingside.assign(2, false), CastleQueenside.assign(2, false);
     
     auto it2=FENinfo.find(' ', ++it);
 
     while (it!=it2){
         if (FENinfo[it] == 'K'){
-            LegalMoves::CastleKingside[1]=true;
+            CastleKingside[1]=true;
         } else if (FENinfo[it] == 'Q'){
-            LegalMoves::CastleQueenside[1]=true;
+            CastleQueenside[1]=true;
         } else if (FENinfo[it] == 'k'){
-            LegalMoves::CastleKingside[0]=true;
+            CastleKingside[0]=true;
         } else if (FENinfo[it] == 'q'){
-            LegalMoves::CastleQueenside[0]=true;
+            CastleQueenside[0]=true;
         };
 
         it++;
@@ -331,7 +331,7 @@ void SetupBoard(std::string FENstring){
     // En Passant avaliable
     if (FENinfo[it] !='-'){
         std::string str=FENinfo.substr(it, 2);
-        std::cout << LegalMoves::CastleKingside[0] << LegalMoves::CastleKingside[1] << LegalMoves::CastleQueenside[0] << LegalMoves::CastleQueenside[1]<< " " << str << std::endl;
+        std::cout << CastleKingside[0] << CastleKingside[1] << CastleQueenside[0] << CastleQueenside[1]<< " " << str << std::endl;
         int initialSq, finalSq=Ref2Idx(str);
 
         if (ColourEnemy==Piece::Colour::White){
@@ -344,8 +344,8 @@ void SetupBoard(std::string FENstring){
     };
 
     // Update KingSquares
-    LegalMoves::KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
-    LegalMoves::KingSquares[ColourEnemy]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourEnemy));});;
+    KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
+    KingSquares[ColourEnemy]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourEnemy));});;
 
 };
 
@@ -390,7 +390,6 @@ void Print_Board(int Perspective/*=ColourToMove*/){
 
 // Function to move a piece to a square, from a square index i.e. 40 -> 56
 void MakeMove(Move updateMove){
-
 
     // Use a switch statement here for the flags of the different moves
     switch (updateMove.flag)
@@ -469,23 +468,23 @@ void MakeMove(Move updateMove){
     // Updates anytime the king moves in the 5th file
     if (Piece::IsFigure(Board[updateMove.initial_square], Piece::King)){
         if (updateMove.initial_square%8 == 4){
-            LegalMoves::CastleQueenside[ColourToMove]=false;
-            LegalMoves::CastleKingside[ColourToMove]=false;
+            CastleQueenside[ColourToMove]=false;
+            CastleKingside[ColourToMove]=false;
         };
 
     // Updates anytime a rook moves in the edge files
     } else if (Piece::IsFigure(Board[updateMove.initial_square], Piece::Rook)){
         // Left file
         if (updateMove.initial_square%8 == 0){
-            LegalMoves::CastleQueenside[ColourToMove]=false;
+            CastleQueenside[ColourToMove]=false;
         // Right file
         } else if (updateMove.initial_square%8 == 7){
-            LegalMoves::CastleKingside[ColourToMove]=false;
+            CastleKingside[ColourToMove]=false;
         };
     };
 
     // Update KingSquare array if the initial square was the king square
-    if (updateMove.initial_square == LegalMoves::KingSquares[ColourToMove]) LegalMoves::KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
+    if (updateMove.initial_square == KingSquares[ColourToMove]) KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
 
 
     // Finally, swap ColourToMove and EnemyColour

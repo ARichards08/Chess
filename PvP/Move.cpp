@@ -1,5 +1,9 @@
 #include "Move.h"
 
+///////////////////////
+// Class Implementation
+///////////////////////
+
 // Default constructor
 Move::Move(int initial/*=0*/, int target/*=0*/, MFlag f/*=None*/){
     initial_square=initial;

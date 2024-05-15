@@ -26,6 +26,13 @@ int ColourToMove=1, ColourEnemy=0;
 // Only needed for En Passant, but could display it for players as well
 std::vector<Move> lastMoves(2);
 
+// Vector of two boolean constants, [0] for black and [1] for white, same as the colours. Set to true initially, if King or Rooks are moved its set to false
+std::vector<bool> CastleQueenside(2, true), CastleKingside(2, true);
+
+// Vector to hold the squares the king occupys
+std::vector<int> KingSquares(2, 0);
+
+
 //////////
 // Program
 //////////

@@ -7,17 +7,6 @@
 // Namespace with all the functions related to validating a legal move
 namespace LegalMoves{
 
-    extern const std::vector<int> SlidingDirections;
-
-    extern const std::vector<std::vector<int>> diagonals;
-
-    extern std::vector<bool> CastleQueenside, CastleKingside;
-
-    extern std::vector<int> SquaresToBlock;
-
-    // Vector to hold the squares the king occupys
-    extern std::vector<int> KingSquares;
-
     // Static vector that contains the number of squares in 8 directions
     // Precomputing function will be called to set this up.
     std::vector<std::vector<int>> PrecomputingData();

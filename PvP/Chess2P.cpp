@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm> // find_if
 #include <map> // Loading from FEN
+#include <cmath>
 
 // Class headers
 #include "Move.h"
@@ -26,12 +27,29 @@ int ColourToMove=1, ColourEnemy=0;
 // Only needed for En Passant, but could display it for players as well
 std::vector<Move> lastMoves(2);
 
+// Variable holds the valid enpassant file, equla to -1 if there is no valid file
+int EnPassantFile=-1;
+
+// 2D vector of castling rights, first index convers the 
 // Vector of two boolean constants, [0] for black and [1] for white, same as the colours. Set to true initially, if King or Rooks are moved its set to false
-std::vector<bool> CastleQueenside(2, true), CastleKingside(2, true);
+std::vector<bool> CastlingRights(2, (2, true));
 
 // Vector to hold the squares the king occupys
 std::vector<int> KingSquares(2, 0);
 
+// Function to convert the vector of booleans related to the castling rights into an binary index
+int CastlingIndex(std::vector<std::vector<bool>> CastlingRights){
+    
+    std::string index="";
+
+    for (int i=0; i<2; i++){
+        for (int j=0; j<2; j++){
+            index+=CastlingRights[i][j] ? "1" : "0";
+        };
+    };
+
+    return std::stoi(index, nullptr, 2); // nullptr so that we can specify the third arguement, the base of the integer
+};
 
 //////////
 // Program

@@ -14,18 +14,18 @@
 // Fucntion to compute the 64 bit random numbers needed to perform Zobrist hashing
 void ZobristInit(){
 
-    
-
     // PRNG setup
     
     // Only if wanting to seed with a random number
     //pcg_extras::seed_seq_from<std::random_device> seed_source;
+    // 206005392 is a decent number from literature, try to find the source to put here
         
     pcg64 PRNG_engine(206005392);
 
     std::uniform_int_distribution<unsigned long long> uni_dist(0, UINT64_MAX);
 
     // Piece random numbers
+    // i = piece type, j = piece colour, k = piece square
     for (int i=0; i<6; i++){
         for (int j=0; j<2; j++){
             for (int k=0; k<64; k++){
@@ -37,6 +37,11 @@ void ZobristInit(){
     // Castling rights random numbers
     for (int i=0; i<16; i++){
         castlingRndNums[i]=uni_dist(PRNG_engine);
+    };
+
+    // En Passant File random numbers
+    for (int i=0; i<8; i++){
+        enpassantRndNums[i]=uni_dist(PRNG_engine);
     };
 
     // Side to move random number
@@ -63,13 +68,13 @@ unsigned long long CalculateZobristKey(std::vector<int> Board, std::vector<int> 
     };
 
     // Updates the zobristKey with ep file
-
+    if (EnPassantFile != -1) zobristKey^=enpassantRndNums[EnPassantFile];
+    
     // Updates the zobristKey with castling rights
-
+    zobristKey^=castlingRndNums[CastlingIndex(CastlingRights)];
 
     // Updates the zobristKey with colour to move
     if (ColourToMove==0) zobristKey^=sideToMoveRndNum;
 
     return zobristKey;
-
 };

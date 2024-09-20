@@ -388,7 +388,7 @@ namespace LegalMoves{
         // Can't castle out of check
         if (!inCheck){
             // If neither King nor left Rook has moved
-            if (CastleQueenside[ColourToMove]==true){
+            if (CastlingRights[ColourToMove][CastlingSide::Queenside]==true){
                 // If the three squares between the left Rook and the King are empty, and the Rook square does have a rook, add the move
                 if (Piece::IsFigure(Board[startSq-1], Piece::Figure::None) && Piece::IsFigure(Board[startSq-2], Piece::Figure::None) && Piece::IsFigure(Board[startSq-3], Piece::Figure::None) && Piece::IsFigure(Board[startSq-4], Piece::Figure::Rook)){
                     // Add King move if the target square is not under attack
@@ -396,7 +396,7 @@ namespace LegalMoves{
                 };
             };
             // Same again but for right
-            if (CastleKingside[ColourToMove]==true){
+            if (CastlingRights[ColourToMove][CastlingSide::Kingside]==true){
                 // If the two squares between the right Rook and the King are empty, and the Rook square does have a rook, add the move
                 if (Piece::IsFigure(Board[startSq+1], Piece::Figure::None) && Piece::IsFigure(Board[startSq+2], Piece::Figure::None) && Piece::IsFigure(Board[startSq+3], Piece::Figure::Rook)){
                     // Add King move if the target square is not under attack

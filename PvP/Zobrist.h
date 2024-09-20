@@ -3,7 +3,7 @@
 
 
 // Zobrist Hashing section, to do with remembering all of the previous board states
-// Need 64 bit random numbers, so unsigned long int
+// Need 64 bit random numbers, so unsigned long long int
 
 // Random numbers of each type of piece of each colour on each square of the board, initialised with sizes 6, 2, 64
 std::vector<std::vector<std::vector<unsigned long long>>> pieceRndNums(6, std::vector<std::vector<unsigned long long>>(2, std::vector<unsigned long long>(64)));
@@ -11,8 +11,8 @@ std::vector<std::vector<std::vector<unsigned long long>>> pieceRndNums(6, std::v
 // Random numbers for if each side has castling rights
 std::vector<unsigned long long> castlingRndNums(16);
 
-// Random numbers to indicate a valid en-passant file, 8 + 1 for if there isnt a valid file
-std::vector<unsigned long long> enpassantRndNums(9);
+// Random numbers to indicate a valid en-passant file
+std::vector<unsigned long long> enpassantRndNums(8);
 
 // Final random number, needed for the side to move. Only hashed with the key if it is black's turn to move
 unsigned long long sideToMoveRndNum;

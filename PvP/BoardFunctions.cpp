@@ -309,19 +309,19 @@ void SetupBoard(std::string FENstring){
     // Castles avaliable
     it=FENinfo.find(' ');
 
-    CastleKingside.assign(2, false), CastleQueenside.assign(2, false);
+    CastlingRights.assign(2, std::vector<bool>(2, false));
     
     auto it2=FENinfo.find(' ', ++it);
 
     while (it!=it2){
         if (FENinfo[it] == 'K'){
-            CastleKingside[1]=true;
+            CastlingRights[Piece::Colour::White][CastlingSide::Kingside]=true;
         } else if (FENinfo[it] == 'Q'){
-            CastleQueenside[1]=true;
+            CastlingRights[Piece::Colour::White][CastlingSide::Queenside]=true;
         } else if (FENinfo[it] == 'k'){
-            CastleKingside[0]=true;
+            CastlingRights[Piece::Colour::Black][CastlingSide::Kingside]=true;
         } else if (FENinfo[it] == 'q'){
-            CastleQueenside[0]=true;
+            CastlingRights[Piece::Colour::Black][CastlingSide::Queenside]=true;
         };
 
         it++;
@@ -331,7 +331,6 @@ void SetupBoard(std::string FENstring){
     // En Passant avaliable
     if (FENinfo[it] !='-'){
         std::string str=FENinfo.substr(it, 2);
-        std::cout << CastleKingside[0] << CastleKingside[1] << CastleQueenside[0] << CastleQueenside[1]<< " " << str << std::endl;
         int initialSq, finalSq=Ref2Idx(str);
 
         if (ColourEnemy==Piece::Colour::White){
@@ -468,18 +467,18 @@ void MakeMove(Move updateMove){
     // Updates anytime the king moves in the 5th file
     if (Piece::IsFigure(Board[updateMove.initial_square], Piece::King)){
         if (updateMove.initial_square%8 == 4){
-            CastleQueenside[ColourToMove]=false;
-            CastleKingside[ColourToMove]=false;
+            CastlingRights[ColourToMove][CastlingSide::Kingside]=false;
+            CastlingRights[ColourToMove][CastlingSide::Queenside]=false;
         };
 
     // Updates anytime a rook moves in the edge files
     } else if (Piece::IsFigure(Board[updateMove.initial_square], Piece::Rook)){
         // Left file
         if (updateMove.initial_square%8 == 0){
-            CastleQueenside[ColourToMove]=false;
+            CastlingRights[ColourToMove][CastlingSide::Queenside]=false;
         // Right file
         } else if (updateMove.initial_square%8 == 7){
-            CastleKingside[ColourToMove]=false;
+            CastlingRights[ColourToMove][CastlingSide::Kingside]=false;
         };
     };
 

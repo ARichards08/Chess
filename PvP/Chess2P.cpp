@@ -28,7 +28,7 @@ int ColourToMove=1, ColourEnemy=0;
 // Only needed for En Passant, but could display it for players as well
 std::vector<Move> lastMoves(2);
 
-// Variable holds the valid enpassant file, equla to -1 if there is no valid file
+// Variable holds the valid enpassant file, equal to -1 if there is no valid file
 int EnPassantFile=-1;
 
 // 2D vector of castling rights, first index convers the 

@@ -87,30 +87,52 @@ namespace Zobrist{
     // be used when setting up the board
     unsigned long long CalculateZobristKey(std::vector<int> Board, std::vector<int> PieceSquares){
 
-        unsigned long long zobristKey=0;
+        key=0;
 
         // First index, find the type of piece, cast to int and -1, as we do not care about None pieces
         // Second index, checks the colour of the piece and if it is black returns 0 otherwise 1 for the colour index
         // Third index, just the PieceSquares entry
 
-        // Updates the zobristKey by XORing each piece's hash with the key
+        // Updates the key by XORing each piece's hash with the key
         for (int i=0; i<PieceSquares.size(); i++){
             int piecefigure=(int) Piece::ReturnFigure(Board[PieceSquares[i]])-1;
             int piececolour=(Piece::IsColour(Board[PieceSquares[i]], Piece::Colour::Black)) ? 0 : 1;
             
-            zobristKey^=pieceRndNums[piecefigure][piececolour][PieceSquares[i]];
+            key^=pieceRndNums[piecefigure][piececolour][PieceSquares[i]];
         };
 
-        // Updates the zobristKey with ep file
-        if (EnPassantFile != -1) zobristKey^=enpassantRndNums[EnPassantFile];
+        // Updates the key with ep file
+        if (EnPassantFile != -1) key^=enpassantRndNums[EnPassantFile];
         
-        // Updates the zobristKey with castling rights
-        zobristKey^=castlingRndNums[CastlingIndex(CastlingRights)];
+        // Updates the key with castling rights
+        key^=castlingRndNums[CastlingIndex(CastlingRights)];
 
-        // Updates the zobristKey with colour to move
-        if (ColourToMove==0) zobristKey^=sideToMoveRndNum;
+        // Updates the key with colour to move
+        if (ColourToMove==0) key^=sideToMoveRndNum;
 
-        return zobristKey;
+        return key;
+    };
+
+    // Function to add or remove a piece on a square from the zobrist key
+    void UpdatePieceZobristKey(int square, Piece::Colour pcol, Piece::Figure pfig){
+        key^=pieceRndNums[pfig][pcol][square];
+    };
+
+    // Function to update castling rights in the zobrist key
+    void UpdateCastlingZobristKey(std::vector<std::vector<bool>> oldCastlingRights, std::vector<std::vector<bool>> CastlingRights){
+        key^=castlingRndNums[CastlingIndex(oldCastlingRights)];
+        key^=castlingRndNums[CastlingIndex(CastlingRights)];
+    };
+
+    // Function to update enpassant file in the zobrist key
+    void UpdateEnPassantZobristKey(int oldEPFile, int EPFile){
+        key^=enpassantRndNums[oldEPFile];
+        if (EPFile != -1) key^=enpassantRndNums[EPFile];
+    };
+
+    // Function to update the side to move in the zobrist key
+    void UpdateSideToMoveZobristKey(){
+        key^=sideToMoveRndNum;
     };
 
 };

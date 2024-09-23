@@ -10,6 +10,7 @@
 #include "Piece.h"
 #include "Move.h"
 #include "LegalMoves.h"
+#include "Zobrist.h"
 
 // Function to return a unicode character based on a square number. Unicode figures for all chess pieces and black and white squares
 // Annoyingly the colours are inverted if the terminal is set to dark mode. Will use a seperate function to print dark mode characters as the opposite colour
@@ -390,37 +391,55 @@ void Print_Board(int Perspective/*=ColourToMove*/){
 // Function to move a piece to a square, from a square index i.e. 40 -> 56
 void MakeMove(Move updateMove){
 
+    Piece::Figure movingPieceType=Piece::ReturnFigure(updateMove.initial_square);
+    int oldEnPassantFile=EnPassantFile;
+    std::vector<std::vector<bool>> oldCastlingRights=CastlingRights;
+
+    // Can be used to check for captures, if =0, then not a capture, except for en passant as this is always a capture
+    Piece::Figure capturedPieceType=Piece::ReturnFigure(updateMove.target_square);
+
+
+    // Always removing the moving piece from it's starting square
+    Piece::Remove(updateMove.initial_square);
+    Zobrist::UpdatePieceZobristKey(updateMove.initial_square, ColourToMove, movingPieceType);
+
     // Use a switch statement here for the flags of the different moves
     switch (updateMove.flag)
     {
     case Move::MFlag::Castling :
         // Move King
-        Piece::Add(updateMove.target_square, ColourToMove, Piece::ReturnFigure(Board[updateMove.initial_square]));
-        Piece::Remove(updateMove.initial_square);
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::King);
+        Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourToMove, Piece::Figure::King);
 
         // Castling left
         if (updateMove.target_square < updateMove.initial_square){
             Piece::Add(updateMove.target_square+1, ColourToMove, Piece::Figure::Rook);
+            Zobrist::UpdatePieceZobristKey(updateMove.target_square+1, ColourToMove, Piece::Figure::Rook);
             Piece::Remove(updateMove.target_square-1);
+            Zobrist::UpdatePieceZobristKey(updateMove.target_square-1, ColourToMove, Piece::Figure::Rook);
 
         // Castling right
         } else{
             Piece::Add(updateMove.target_square-1, ColourToMove, Piece::Figure::Rook);
+            Zobrist::UpdatePieceZobristKey(updateMove.target_square-1, ColourToMove, Piece::Figure::Rook);
             Piece::Remove(updateMove.target_square+1);
+            Zobrist::UpdatePieceZobristKey(updateMove.target_square+1, ColourToMove, Piece::Figure::Rook);
         };
 
         break;
 
     // En Passant
     case Move::MFlag::EnPassant :
-        Piece::Add(updateMove.target_square, ColourToMove, Piece::ReturnFigure(Board[updateMove.initial_square]));
-        Piece::Remove(updateMove.initial_square);
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::Pawn);
+        Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourToMove, Piece::Figure::Pawn);
 
         // Determine whether or not to remove the piece above or below the target square depending on the colour
         if (ColourToMove==Piece::Colour::White){
             Piece::Remove(updateMove.target_square-8);
+            Zobrist::UpdatePieceZobristKey(updateMove.target_square-8, ColourEnemy, Piece::Figure::Pawn);
         } else {
             Piece::Remove(updateMove.target_square+8);
+            Zobrist::UpdatePieceZobristKey(updateMove.target_square+8, ColourEnemy, Piece::Figure::Pawn);
         };
     
         break;
@@ -428,32 +447,33 @@ void MakeMove(Move updateMove){
     // Pawn Promotions
     case Move::MFlag::PromoteRook :
         Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::Rook);
-        Piece::Remove(updateMove.initial_square);
+        Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourToMove, Piece::Figure::Rook);
 
         break;
 
     case Move::MFlag::PromoteKnight :
         Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::Knight);
-        Piece::Remove(updateMove.initial_square);
+        Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourToMove, Piece::Figure::Knight);
 
         break;
 
     case Move::MFlag::PromoteBishop :
         Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::Bishop);
-        Piece::Remove(updateMove.initial_square);
+        Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourToMove, Piece::Figure::Bishop);
 
         break;
 
     case Move::MFlag::PromoteQueen :
         Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::Queen);
-        Piece::Remove(updateMove.initial_square);
+        Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourToMove, Piece::Figure::Queen);
 
         break;
 
     default:
         // Regular move
         Piece::Add(updateMove.target_square, ColourToMove, Piece::ReturnFigure(Board[updateMove.initial_square]));
-        Piece::Remove(updateMove.initial_square);
+        Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourToMove, movingPieceType);
+
         break;
     };
     
@@ -482,12 +502,16 @@ void MakeMove(Move updateMove){
         };
     };
 
+    // Update Zobrist Castling Rights, if they have changed
+    if (oldCastlingRights != CastlingRights) Zobrist::UpdateCastlingZobristKey(oldCastlingRights, CastlingRights);
+
     // Update KingSquare array if the initial square was the king square
     if (updateMove.initial_square == KingSquares[ColourToMove]) KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
 
 
     // Finally, swap ColourToMove and EnemyColour
     std::swap(ColourToMove, ColourEnemy);
+    Zobrist::UpdateSideToMoveZobristKey();
 };
 
 // Function to search a list of moves, looking for a match for an initial and target square. If pawn promotion, checks for promo flags

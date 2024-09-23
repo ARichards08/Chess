@@ -13,6 +13,7 @@
 // Function headers
 #include "LegalMoves.h"
 #include "BoardFunctions.h"
+#include "Zobrist.h"
 
 
 // Global Variable Definitions
@@ -32,24 +33,10 @@ int EnPassantFile=-1;
 
 // 2D vector of castling rights, first index convers the 
 // Vector of two boolean constants, [0] for black and [1] for white, same as the colours. Set to true initially, if King or Rooks are moved its set to false
-std::vector<bool> CastlingRights(2, (2, true));
+std::vector<std::vector<bool>> CastlingRights(2, std::vector<bool>(2, true));
 
 // Vector to hold the squares the king occupys
 std::vector<int> KingSquares(2, 0);
-
-// Function to convert the vector of booleans related to the castling rights into an binary index
-int CastlingIndex(std::vector<std::vector<bool>> CastlingRights){
-    
-    std::string index="";
-
-    for (int i=0; i<2; i++){
-        for (int j=0; j<2; j++){
-            index+=CastlingRights[i][j] ? "1" : "0";
-        };
-    };
-
-    return std::stoi(index, nullptr, 2); // nullptr so that we can specify the third arguement, the base of the integer
-};
 
 //////////
 // Program
@@ -60,6 +47,12 @@ int main (){
 
 // Setup Board
 SetupBoard();
+
+// Setup the game history vector, initialise all the random numbers and then calculate the first Zobrist key
+std::vector<unsigned long long> GameHistory;
+
+Zobrist::ZobristInit();
+GameHistory.push_back(Zobrist::CalculateZobristKey(Board, PieceSquares));
 
 // Move list
 std::vector<Move> MoveList;

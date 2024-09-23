@@ -28,7 +28,8 @@ enum CastlingSide{Queenside, Kingside};
 // Vector to hold the squares the king occupys
 extern std::vector<int> KingSquares;
 
-// Function to convert the vector of boolean castling rights into a 4 digit binary number
-int CastlingIndex(std::vector<std::vector<bool>>& CastlingRights);
+// Game History held within a vector, might be better to use something like a queue but I'm not familiar enough with these things as the moment
+// The game history is stored as a series of zobrist keys
+extern std::vector<unsigned long long> GameHistory;
 
 #endif

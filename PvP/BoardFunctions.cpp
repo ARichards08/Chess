@@ -397,11 +397,15 @@ void MakeMove(Move updateMove){
 
     // Can be used to check for captures, if =0, then not a capture, except for en passant as this is always a capture
     Piece::Figure capturedPieceType=Piece::ReturnFigure(updateMove.target_square);
+    bool isCapture = capturedPieceType!=0;
 
 
     // Always removing the moving piece from it's starting square
     Piece::Remove(updateMove.initial_square);
     Zobrist::UpdatePieceZobristKey(updateMove.initial_square, ColourToMove, movingPieceType);
+
+    // If the move is a capture
+    if (isCapture && updateMove.flag!=Move::MFlag::EnPassant) Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourEnemy, capturedPieceType);
 
     // Use a switch statement here for the flags of the different moves
     switch (updateMove.flag)

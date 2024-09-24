@@ -493,7 +493,7 @@ namespace LegalMoves{
             diagonalIt=0;
             pawnRowStart=8;
             pawnRowEnd=15;
-        // Only move S, SE or SW when the player colour is white
+        // Only move S, SE or SW when the player colour is black
         } else {
             forwardIt=1;
             diagonalIt=1;
@@ -518,21 +518,27 @@ namespace LegalMoves{
                         PawnMovesList.push_back(Move(startSq, targetSq));
                     };
                 };
-            };
 
-            // Charging
-            // Check if the pawn is in the second row from it's side, if so allow it to charge
-            if (startSq >= pawnRowStart && startSq <= pawnRowEnd){
-                targetSq=startSq+SlidingDirections[forwardIt]*2;
-                targetPc=Board[targetSq];
+                // Charging
+                // Check if the pawn is in the second row from it's side, if so allow it to charge
+                if (startSq >= pawnRowStart && startSq <= pawnRowEnd){
 
-                // Check the forward square is empty
-                // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
-                if (Piece::IsFigure(targetPc, Piece::Figure::None) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
-                    PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::PawnCharge));
+                    // Have to check that the first square forwards is empty as well
+                    // targetPc is still targeting the square one in front of the pawn
+                    if (Piece::IsFigure(targetPc, Piece::Figure::None)){
+
+                        targetSq=startSq+SlidingDirections[forwardIt]*2;
+                        targetPc=Board[targetSq];
+
+                        // Check the forward square is empty
+                        // Only add to the vector if the the king isn't in check, or if the target square is in SquaresToBlock, to block a check
+                        if (Piece::IsFigure(targetPc, Piece::Figure::None) && (!Check || std::find(std::begin(SquaresToBlock), std::end(SquaresToBlock), targetSq)!=std::end(SquaresToBlock))){
+                            PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::PawnCharge));
+                        };
+                    };
                 };
             };
-
+            
         };
 
         // Attacking

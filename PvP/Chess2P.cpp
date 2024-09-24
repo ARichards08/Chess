@@ -11,8 +11,8 @@
 #include "Piece.h"
 
 // Function headers
-#include "LegalMoves.h"
 #include "BoardFunctions.h"
+#include "LegalMoves.h"
 #include "Zobrist.h"
 
 
@@ -24,12 +24,8 @@ std::vector<int> Board(64, 0), PieceSquares;
 // Colour that is currently to move, can be updated by assigning Piece::Colour
 int ColourToMove=1, ColourEnemy=0;
 
-// Array of the last move of each side, updated after each move
-// Only needed for En Passant, but could display it for players as well
-std::vector<Move> lastMoves(2);
-
-// Variable holds the valid enpassant file, equal to -1 if there is no valid file
-int EnPassantFile=-1;
+// Variable holds the valid enpassant file, equal to -1 if there is no valid file. valid files are 0-7
+int EnPassantFile;
 
 // 2D vector of castling rights, first index convers the 
 // Vector of two boolean constants, [0] for black and [1] for white, same as the colours. Set to true initially, if King or Rooks are moved its set to false
@@ -50,6 +46,7 @@ SetupBoard();
 
 // Setup the game history vector, initialise all the random numbers and then calculate the first Zobrist key
 std::vector<unsigned long long> GameHistory;
+int threeFoldFreq;
 
 Zobrist::ZobristInit();
 GameHistory.push_back(Zobrist::CalculateZobristKey(Board, PieceSquares));
@@ -87,6 +84,16 @@ while (true){
     getline(std::cin, playerMove);
 
     attemptedMove(playerMove, MoveList);
+
+    GameHistory.push_back(Zobrist::key); // Update game history vector
+
+    // 3 fold repetition draw handling
+    threeFoldFreq=std::count(std::begin(GameHistory), std::end(GameHistory), GameHistory.back());
+    if (threeFoldFreq==3){
+        std::cout << "Draw by three fold repetition, final move by " << ((ColourToMove==0) ? "Black." : "White.") << std::endl;
+        break;
+    };
+
     Print_Board(Piece::Colour::White); // Print board from white's perspective, flips board each turn by default
 };
 

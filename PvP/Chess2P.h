@@ -13,10 +13,6 @@ extern std::vector<int> Board, PieceSquares;
 // Colour that is currently to move, can be updated by assigning Piece::Colour
 extern int ColourToMove, ColourEnemy;
 
-// Array of the last move of each side, updated after each move
-// Only needed for En Passant, but could display it for players as well
-extern std::vector<Move> lastMoves;
-
 // Variable to hold if there is a valid enpassant target file, equal to -1 if there is none
 extern int EnPassantFile;
 

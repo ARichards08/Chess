@@ -2,6 +2,7 @@
 #define ZOBRIST_H
 
 #include <vector>
+#include "Piece.h"
 
 // Zobrist Hashing section, to do with remembering all of the previous board states
 // Need 64 bit random numbers, so unsigned long long int
@@ -9,7 +10,7 @@
 namespace Zobrist{
 
     // Variable to hold the current zobristKey, 
-    unsigned long long key;
+    extern unsigned long long key;
 
     // Function to compute the 64 bit random numbers needed to perform Zobrist hashing
     void ZobristInit();

@@ -5,11 +5,12 @@
 #include <iostream>
 #include <map>
 #include <algorithm>
+#include <cmath>
 
 #include "Chess2P.h"
 #include "Piece.h"
 #include "Move.h"
-#include "LegalMoves.h"
+//#include "LegalMoves.h"
 #include "Zobrist.h"
 
 // Function to return a unicode character based on a square number. Unicode figures for all chess pieces and black and white squares
@@ -238,6 +239,18 @@ std::string Ind2Ref(int Ind){
     return letter+std::to_string(Ind/8 + 1);
 };
 
+// Function to return the row of a square on the board
+// Numbered 0-7 for indexing
+int Row(int square){
+    return std::floor(square/8);
+};
+
+// Function to return the file of a square on the board
+// Numbered 0-7 for indexing
+int File(int square){
+    return square%8;
+};
+
 // Function for setting up the board from a FEN string, default argument is the initial board position. Doesn't take the Halfmove clock and Fullmove number information
 void SetupBoard(std::string FENstring){
     char piece;
@@ -332,15 +345,11 @@ void SetupBoard(std::string FENstring){
     // En Passant avaliable
     if (FENinfo[it] !='-'){
         std::string str=FENinfo.substr(it, 2);
-        int initialSq, finalSq=Ref2Idx(str);
+        int EPsq=Ref2Idx(str);
 
-        if (ColourEnemy==Piece::Colour::White){
-            initialSq=finalSq-16;
-        } else {
-            initialSq=finalSq+16;
-        };
-
-        lastMoves[ColourEnemy]=Move(initialSq, finalSq, Move::MFlag::PawnCharge);
+        EnPassantFile=File(EPsq);
+    } else {
+        EnPassantFile=-1;
     };
 
     // Update KingSquares
@@ -391,25 +400,30 @@ void Print_Board(int Perspective/*=ColourToMove*/){
 // Function to move a piece to a square, from a square index i.e. 40 -> 56
 void MakeMove(Move updateMove){
 
-    Piece::Figure movingPieceType=Piece::ReturnFigure(updateMove.initial_square);
+    Piece::Figure movingPieceType=Piece::ReturnFigure(Board[updateMove.initial_square]);
+
     int oldEnPassantFile=EnPassantFile;
+    EnPassantFile=-1; // EnPassant file is changed to -1 here, but later is given another value if the next move is a pawn charge
+
     std::vector<std::vector<bool>> oldCastlingRights=CastlingRights;
 
     // Can be used to check for captures, if =0, then not a capture, except for en passant as this is always a capture
-    Piece::Figure capturedPieceType=Piece::ReturnFigure(updateMove.target_square);
-    bool isCapture = capturedPieceType!=0;
+    Piece::Figure capturedPieceType=Piece::ReturnFigure(Board[updateMove.target_square]);
+    bool isCapture = capturedPieceType!=Piece::Figure::None;
 
 
     // Always removing the moving piece from it's starting square
     Piece::Remove(updateMove.initial_square);
     Zobrist::UpdatePieceZobristKey(updateMove.initial_square, ColourToMove, movingPieceType);
 
-    // If the move is a capture
+    // If the move is a capture, remove enemy piece at target square
     if (isCapture && updateMove.flag!=Move::MFlag::EnPassant) Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourEnemy, capturedPieceType);
 
     // Use a switch statement here for the flags of the different moves
     switch (updateMove.flag)
     {
+
+    // Castling
     case Move::MFlag::Castling :
         // Move King
         Piece::Add(updateMove.target_square, ColourToMove, Piece::Figure::King);
@@ -473,24 +487,32 @@ void MakeMove(Move updateMove){
 
         break;
 
+    // Pawn Charge
+    // Update EnPassant File along with the regular move
+    case Move::MFlag::PawnCharge :
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::ReturnFigure(movingPieceType));
+        Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourToMove, movingPieceType);
+
+        EnPassantFile=File(updateMove.target_square);
+
+        break;
+
     default:
         // Regular move
-        Piece::Add(updateMove.target_square, ColourToMove, Piece::ReturnFigure(Board[updateMove.initial_square]));
+        Piece::Add(updateMove.target_square, ColourToMove, Piece::ReturnFigure(movingPieceType));
         Zobrist::UpdatePieceZobristKey(updateMove.target_square, ColourToMove, movingPieceType);
 
         break;
     };
-    
 
-    // Update the lastMoves array
-    lastMoves[ColourToMove]=updateMove;
-
+    // Update KingSquare array if the initial square was the king square
+    if (updateMove.initial_square == KingSquares[ColourToMove]) KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
 
     // Castling checks after possible castling moves
 
     // Updates anytime the king moves in the 5th file
     if (Piece::IsFigure(Board[updateMove.initial_square], Piece::King)){
-        if (updateMove.initial_square%8 == 4){
+        if (File(updateMove.initial_square) == 4){
             CastlingRights[ColourToMove][CastlingSide::Kingside]=false;
             CastlingRights[ColourToMove][CastlingSide::Queenside]=false;
         };
@@ -498,10 +520,10 @@ void MakeMove(Move updateMove){
     // Updates anytime a rook moves in the edge files
     } else if (Piece::IsFigure(Board[updateMove.initial_square], Piece::Rook)){
         // Left file
-        if (updateMove.initial_square%8 == 0){
+        if (File(updateMove.initial_square) == 0){
             CastlingRights[ColourToMove][CastlingSide::Queenside]=false;
         // Right file
-        } else if (updateMove.initial_square%8 == 7){
+        } else if (File(updateMove.initial_square) == 7){
             CastlingRights[ColourToMove][CastlingSide::Kingside]=false;
         };
     };
@@ -509,9 +531,8 @@ void MakeMove(Move updateMove){
     // Update Zobrist Castling Rights, if they have changed
     if (oldCastlingRights != CastlingRights) Zobrist::UpdateCastlingZobristKey(oldCastlingRights, CastlingRights);
 
-    // Update KingSquare array if the initial square was the king square
-    if (updateMove.initial_square == KingSquares[ColourToMove]) KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
-
+    // Update Zobrist EnPassant File
+    if (oldEnPassantFile!=EnPassantFile) Zobrist::UpdateEnPassantZobristKey(oldEnPassantFile, EnPassantFile);
 
     // Finally, swap ColourToMove and EnemyColour
     std::swap(ColourToMove, ColourEnemy);

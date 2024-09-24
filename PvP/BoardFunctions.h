@@ -9,7 +9,6 @@
 // Function to return a unicode character based on a square number. Unicode figures for all chess pieces and black and white squares
 // Annoyingly the colours are inverted if the terminal is set to dark mode. Will use a seperate function to print dark mode characters as the opposite colour
 std::string Reference(int Position);
-
 std::string ReferenceDarkMode(int Position);
 
 // Function to check if an inputted move uses two squares on the board, syntax check
@@ -20,6 +19,12 @@ int Ref2Idx(std::string Ref);
 
 // Function to convert an array index into a square reference
 std::string Ind2Ref(int Ind);
+
+// Function to return the row of a board square
+int Row(int square);
+
+// Function to return the column of a board square
+int File(int square);
 
 // Function for setting up the board from a FEN string, default argument is the initial board position. Doesn't take the Halfmove clock and Fullmove number information
 void SetupBoard(std::string FENstring="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");

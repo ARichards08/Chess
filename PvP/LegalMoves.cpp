@@ -3,8 +3,10 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
+
 #include "Chess2P.h"
 #include "Piece.h"
+#include "BoardFunctions.h"
 
 namespace LegalMoves{
 
@@ -482,7 +484,7 @@ namespace LegalMoves{
     // Function to generate the pseudo-legal Pawn moves
     // No need to check for promotions on charging and en passant moves
     void GeneratePawnMoves(int startSq, std::vector<Move>& PawnMovesList, const bool& Check, std::vector<std::vector<int>>& PinnedRays){
-        int targetSq, targetPc, forwardIt, diagonalIt, pawnRowStart, pawnRowEnd;
+        int targetSq, targetPc, forwardIt, diagonalIt, pawnRow, EPRow;
 
         // Promote if pawn is in either in the tope or bottom row
         bool nextStepPromote = startSq>55 || startSq<8;
@@ -491,14 +493,14 @@ namespace LegalMoves{
         if (ColourToMove==Piece::Colour::White){
             forwardIt=0;
             diagonalIt=0;
-            pawnRowStart=8;
-            pawnRowEnd=15;
+            pawnRow=1;
+            EPRow=5;
         // Only move S, SE or SW when the player colour is black
         } else {
             forwardIt=1;
             diagonalIt=1;
-            pawnRowStart=48;
-            pawnRowEnd=55;
+            pawnRow=6;
+            EPRow=2;
         };
 
         // Only consider forward moves if pawn isn't pinned or if is moving along the pinned ray
@@ -521,7 +523,7 @@ namespace LegalMoves{
 
                 // Charging
                 // Check if the pawn is in the second row from it's side, if so allow it to charge
-                if (startSq >= pawnRowStart && startSq <= pawnRowEnd){
+                if (Row(startSq)==pawnRow){
 
                     // Have to check that the first square forwards is empty as well
                     // targetPc is still targeting the square one in front of the pawn
@@ -538,7 +540,7 @@ namespace LegalMoves{
                     };
                 };
             };
-            
+
         };
 
         // Attacking
@@ -560,31 +562,20 @@ namespace LegalMoves{
                     } else {
                         PawnMovesList.push_back(Move(startSq, targetSq));
                     };
-                };
 
                 // En Passant check
-                // Check if the last enemy move was a pawn charge to a square on either side of the current pawn
-                // Can't promote on an en passant move so no promotion check
-                if (lastMoves[ColourEnemy].flag == Move::MFlag::PawnCharge){
-
-                    // Check for accidential edge wraparound 
-                    if (SquaresToEdge[startSq][diagonals[diagonalIt][i]] > 0 && (
-
-                        // If the enemy pawn moved to the east square, check the attacking diagonal is either NW or SW
-                        (lastMoves[ColourEnemy].target_square == startSq-1 && (diagonals[diagonalIt][i]==5 || diagonals[diagonalIt][i]==7)) ||
-                        // If the enemy pawn moved to the east square, check the attacking diagonal is either NE or SE
-                        (lastMoves[ColourEnemy].target_square == startSq+1 && (diagonals[diagonalIt][i]==4 || diagonals[diagonalIt][i]==6))
-
-                    )){
-                        // Only add to the move vector if the king won't be in check after the move. Deals with edge case in first video
+                // Check if the valid En Passant file is the same file that the pawn wants to attack, and then check if the pawn is moving into the correct row for it to be an EP capture
+                if (File(targetSq)==EnPassantFile && Row(targetSq)==EPRow){
+                    // Only add to the move vector if the king won't be in check after the move. Deals with edge case in first video
                         if (!InCheckAfterEP(startSq, targetSq)){
                             PawnMovesList.push_back(Move(startSq, targetSq, Move::MFlag::EnPassant));
                         };
-                    };
+                };
+
                 };
             };
-        };
-    };        
+        };      
+    };  
 
     // Function to calculate the number of squares to generate a list of legal moves at each position
     // Also handles the checkmate and draw checks if there are no legal moves
@@ -635,9 +626,9 @@ namespace LegalMoves{
         // Checkmate and Draws
         if (MovesList.size() == 0){
             if (ColourEnemy==Piece::Colour::White && inCheck){
-                std::cout << "Checkmate. White emerges victorious";
+                std::cout << "Checkmate. White emerges victorious.";
             } else if (ColourEnemy==Piece::Colour::Black && inCheck) {
-                std::cout << "Checkmate. Black emerges victorious";
+                std::cout << "Checkmate. Black emerges victorious.";
             } else{
                 std::cout << "Draw, current player has no legal moves but is not in check.";
             };

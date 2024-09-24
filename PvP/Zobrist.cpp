@@ -14,6 +14,9 @@ namespace Zobrist{
     // Zobrist Hashing section, to do with remembering all of the previous board states
     // Need 64 bit random numbers, so unsigned long long int
 
+    // Key definition
+    unsigned long long key=0;
+
     // Random numbers of each type of piece of each colour on each square of the board, initialised with sizes 6, 2, 64
     std::vector<std::vector<std::vector<unsigned long long>>> pieceRndNums(6, std::vector<std::vector<unsigned long long>>(2, std::vector<unsigned long long>(64)));
 
@@ -28,11 +31,10 @@ namespace Zobrist{
 
     // Function to compute the 64 bit random numbers needed to perform Zobrist hashing
     void ZobristInit(){
-
         // PRNG setup
         
         // Only if wanting to seed with a random number
-        //pcg_extras::seed_seq_from<std::random_device> seed_source;
+        // pcg_extras::seed_seq_from<std::random_device> seed_source;
         // 206005392 is a randomly chosen number, at some point it might be worth using a number that is found to have less clashes/collisions
             
         pcg64 PRNG_engine(206005392);
@@ -61,7 +63,6 @@ namespace Zobrist{
 
         // Side to move random number
         sideToMoveRndNum=uni_dist(PRNG_engine);
-
     };
 
 
@@ -70,7 +71,6 @@ namespace Zobrist{
     // 2^3, 2^2, 2^1, 2^0
     // WK,  WQ,  BK,  BQ
     int CastlingIndex(std::vector<std::vector<bool>>& CastlingRights){
-        
         std::string index="";
 
         for (int i=0; i<2; i++){
@@ -82,11 +82,9 @@ namespace Zobrist{
         return std::stoi(index, nullptr, 2); // nullptr so that we can specify the third arguement, the base of the integer
     };
 
-
     // Function to calculate the Zobrist key from a given position. As the advantage of using zobrist hashing is the speed that the key can be updated incrementally, this should only
     // be used when setting up the board
     unsigned long long CalculateZobristKey(std::vector<int> Board, std::vector<int> PieceSquares){
-
         key=0;
 
         // First index, find the type of piece, cast to int and -1, as we do not care about None pieces
@@ -114,7 +112,7 @@ namespace Zobrist{
     };
 
     // Function to add or remove a piece on a square from the zobrist key
-    void UpdatePieceZobristKey(int square, Piece::Colour pcol, Piece::Figure pfig){
+    void UpdatePieceZobristKey(int square, int pcol, Piece::Figure pfig){
         key^=pieceRndNums[pfig][pcol][square];
     };
 
@@ -126,7 +124,7 @@ namespace Zobrist{
 
     // Function to update enpassant file in the zobrist key
     void UpdateEnPassantZobristKey(int oldEPFile, int EPFile){
-        key^=enpassantRndNums[oldEPFile];
+        if (oldEPFile != -1)key^=enpassantRndNums[oldEPFile];
         if (EPFile != -1) key^=enpassantRndNums[EPFile];
     };
 

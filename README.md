@@ -11,7 +11,7 @@ Notes:
 Going to try to use Qt for GUI purposes, until then I am using unicode chess figures in the terminal
 
 List to do:
--FENstring halfmove clock and fullmove number, implement these and the rules
+-For utility, write a function that creates a FENstring of the current position.
 -Use Game History Zobrist Keys to store gamestate evaulations so that we can easily look up the evaulation of a previous gamestate
 
 -Need to improve the MakeMove funciton anyway, Jemma said it was too repetitive so think about a new way to let it out

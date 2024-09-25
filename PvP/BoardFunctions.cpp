@@ -510,21 +510,27 @@ void MakeMove(Move updateMove){
 
     // Castling checks after possible castling moves
 
-    // Updates anytime the king moves in the 5th file
-    if (Piece::IsFigure(Board[updateMove.initial_square], Piece::King)){
-        if (File(updateMove.initial_square) == 4){
-            CastlingRights[ColourToMove][CastlingSide::Kingside]=false;
-            CastlingRights[ColourToMove][CastlingSide::Queenside]=false;
+    // Enemy Checks
+    if (CastlingRights[ColourEnemy][CastlingSide::Queenside]==true || CastlingRights[ColourEnemy][CastlingSide::Kingside]==true){
+        // Disables enemy castling right on rook capture
+        if (isCapture && capturedPieceType==Piece::Rook && Row(updateMove.target_square)==(ColourToMove==1 ? 7 : 0)){
+            if (File(updateMove.target_square)==0) CastlingRights[ColourEnemy][CastlingSide::Queenside]=false;
+            if (File(updateMove.target_square)==7) CastlingRights[ColourEnemy][CastlingSide::Kingside]=false;
         };
+    };
 
-    // Updates anytime a rook moves in the edge files
-    } else if (Piece::IsFigure(Board[updateMove.initial_square], Piece::Rook)){
-        // Left file
-        if (File(updateMove.initial_square) == 0){
-            CastlingRights[ColourToMove][CastlingSide::Queenside]=false;
-        // Right file
-        } else if (File(updateMove.initial_square) == 7){
+    // Friendly checks
+    if (CastlingRights[ColourToMove][CastlingSide::Queenside]==true || CastlingRights[ColourToMove][CastlingSide::Kingside]==true){
+        // Disables friendly castling right on rook move
+        if (movingPieceType==Piece::Rook && Row(updateMove.initial_square)== (ColourToMove==1 ? 0 : 7)){
+            if (File(updateMove.initial_square)==0) CastlingRights[ColourToMove][CastlingSide::Queenside]=false;
+            if (File(updateMove.initial_square)==7) CastlingRights[ColourToMove][CastlingSide::Kingside]=false;
+        };
+        
+        // Disables both friendly castling rights if king moves
+        if (movingPieceType==Piece::King){
             CastlingRights[ColourToMove][CastlingSide::Kingside]=false;
+            CastlingRights[ColourToMove][CastlingSide::Queenside]=false;
         };
     };
 

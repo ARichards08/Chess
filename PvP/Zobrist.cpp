@@ -113,7 +113,7 @@ namespace Zobrist{
 
     // Function to add or remove a piece on a square from the zobrist key
     void UpdatePieceZobristKey(int square, int pcol, Piece::Figure pfig){
-        key^=pieceRndNums[pfig][pcol][square];
+        key^=pieceRndNums[(int) pfig-1][pcol][square];
     };
 
     // Function to update castling rights in the zobrist key

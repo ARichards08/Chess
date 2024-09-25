@@ -251,7 +251,7 @@ int File(int square){
     return square%8;
 };
 
-// Function for setting up the board from a FEN string, default argument is the initial board position. Doesn't take the Halfmove clock and Fullmove number information
+// Function for setting up the board from a FEN string, default argument is the initial board position
 void SetupBoard(std::string FENstring){
     char piece;
     int square=56, empty;
@@ -314,11 +314,11 @@ void SetupBoard(std::string FENstring){
     // Information from FENinfo
 
     // Colour to move
-    if (FENinfo[0]=='w'){
-        ColourToMove=Piece::Colour::White, ColourEnemy=Piece::Colour::Black;
-    } else {
-        ColourToMove=Piece::Colour::Black, ColourEnemy=Piece::Colour::White;
-    };
+    FENinfo[0]=='w' ? (ColourToMove=Piece::Colour::White, ColourEnemy=Piece::Colour::Black) : (ColourToMove=Piece::Colour::Black, ColourEnemy=Piece::Colour::White);
+
+    // Update KingSquares
+    KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
+    KingSquares[ColourEnemy]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourEnemy));});;
 
     // Castles avaliable
     it=FENinfo.find(' ');
@@ -351,11 +351,43 @@ void SetupBoard(std::string FENstring){
     } else {
         EnPassantFile=-1;
     };
+    it++; // it on whitespace
+    
+    // Halfmove clock
+    it++;
+    it2=FENinfo.find(' ', it);
 
-    // Update KingSquares
-    KingSquares[ColourToMove]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourToMove));});;
-    KingSquares[ColourEnemy]=*std::find_if(std::begin(PieceSquares), std::end(PieceSquares), [](const int& i){return (Piece::IsFigure(Board[i], Piece::Figure::King) && Piece::IsColour(Board[i], ColourEnemy));});;
+    std::string str=FENinfo.substr(it, it2-it);
+    HalfmoveClock=stoi(str);
 
+    // Fullmove number
+    it=++it2;
+    str=FENinfo.substr(it, FENinfo.length()-it+1);
+    FullmoveNumber=stoi(str);
+};
+
+// Function to check for the 50 move rule draw
+bool HalfmoveCheck(){
+    std::string input;
+    
+    if (HalfmoveClock>=100){
+        std::cout << std::floor(HalfmoveClock/2) << " moves have occured since the last capture or pawn advance, would you like to claim a draw under the Fifty-Move Rule? Y/N: " ;
+        getline(std::cin, input);
+
+        // Check syntax
+        while (input!="y" && input!="Y" && input!="n" && input!="N"){
+            std::cout << "Invalid syntax, please input either Y or N only: ";
+            getline(std::cin, input);
+        };
+
+        // End game if player has chosen to claim a draw by the 50 move rule
+        if (input=="y" || input=="Y"){
+            std::cout << "Fifty Move Rule draw called by " << ((ColourToMove==0) ? "Black." : "White.") << std::endl;
+            return true;
+        };
+    };
+
+    return false;
 };
 
 // Function to clear the board
@@ -543,6 +575,11 @@ void MakeMove(Move updateMove){
     // Finally, swap ColourToMove and EnemyColour
     std::swap(ColourToMove, ColourEnemy);
     Zobrist::UpdateSideToMoveZobristKey();
+
+    // Increment FullmoveNumber if ColourToMove is now White
+    if (ColourToMove==Piece::Colour::White) FullmoveNumber++;
+    // If isCapture is true or movingPieceType is a pawn, set HalfmoveClock to 0, if it is false, increment it by 1
+    (isCapture||movingPieceType==Piece::Pawn) ? HalfmoveClock=0 : HalfmoveClock++;
 };
 
 // Function to search a list of moves, looking for a match for an initial and target square. If pawn promotion, checks for promo flags

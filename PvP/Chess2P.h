@@ -13,6 +13,9 @@ extern std::vector<int> Board, PieceSquares;
 // Colour that is currently to move, can be updated by assigning Piece::Colour
 extern int ColourToMove, ColourEnemy;
 
+// Halfmove clock and Fullmove number;
+extern int HalfmoveClock, FullmoveNumber;
+
 // Variable to hold if there is a valid enpassant target file, equal to -1 if there is none
 extern int EnPassantFile;
 

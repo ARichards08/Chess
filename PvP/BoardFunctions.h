@@ -26,8 +26,11 @@ int Row(int square);
 // Function to return the column of a board square
 int File(int square);
 
-// Function for setting up the board from a FEN string, default argument is the initial board position. Doesn't take the Halfmove clock and Fullmove number information
+// Function for setting up the board from a FEN string, default argument is the initial board position
 void SetupBoard(std::string FENstring="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+// Function to check for the 50 move rule draw
+bool HalfmoveCheck();
 
 // Function to clear the board
 void ClearBoard();

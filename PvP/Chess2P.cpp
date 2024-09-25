@@ -24,6 +24,9 @@ std::vector<int> Board(64, 0), PieceSquares;
 // Colour that is currently to move, can be updated by assigning Piece::Colour
 int ColourToMove=1, ColourEnemy=0;
 
+// Halfmove clock to be able to use the 50 move rule, and the Fullmove number, which is incremented after Black's move
+int HalfmoveClock=0, FullmoveNumber=0;
+
 // Variable holds the valid enpassant file, equal to -1 if there is no valid file. valid files are 0-7
 int EnPassantFile;
 
@@ -42,7 +45,7 @@ int main (){
 
 
 // Setup Board
-SetupBoard();
+SetupBoard("r3k3/1p3p2/p2q2p1/bn3P2/1N2PQP1/PB6/3K1R1r/3R4 w q - 100 1");
 
 // Setup the game history vector, initialise all the random numbers and then calculate the first Zobrist key
 std::vector<unsigned long long> GameHistory;
@@ -61,7 +64,7 @@ std::vector<Move> MoveList;
 
 
 // Player input
-std::string playerMove;
+std::string playerInput;
 
 // Program loop
 Print_Board();
@@ -70,22 +73,26 @@ std::cout << "Moves are input as the starting square followed by the target squa
 
 while (true){
 
+    // 50 Move rule (100 halfmoves)
+    if (HalfmoveCheck()) break;
+
     MoveList=LegalMoves::GenerateMoves();
 
     // If MoveList is empty, quit program, checkmates and draws are handled in the movelist creation
     if (MoveList.empty()) break;
 
+    // Fullmove Number displayed
+    std::cout << "Move " << FullmoveNumber << ". ";
+
     // Get a move from the player
-    if (ColourToMove==Piece::Colour::White){
-        std::cout << "White player move: ";
-    } else {
-        std::cout << "Black player move: ";
-    };
-    getline(std::cin, playerMove);
+    std::cout << ((ColourToMove==Piece::Colour::White) ? "White player move: " : "Black player move: ");
+    getline(std::cin, playerInput);
 
-    attemptedMove(playerMove, MoveList);
+    // Attempt the inputted move, first checking the syntax and then cheking if it is in the movelist
+    attemptedMove(playerInput, MoveList);
 
-    GameHistory.push_back(Zobrist::key); // Update game history vector
+    // Update game history vector
+    GameHistory.push_back(Zobrist::key);
 
     // 3 fold repetition draw handling
     threeFoldFreq=std::count(std::begin(GameHistory), std::end(GameHistory), GameHistory.back());
